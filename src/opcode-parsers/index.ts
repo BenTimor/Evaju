@@ -9,11 +9,15 @@ import { EQParser } from "./EQ"
 import { GTParser } from "./GT"
 import { JUMPParser } from "./JUMP"
 import { JUMPDESTParser } from "./JUMPDEST"
+import { LOGParser } from "./LOG"
 import { LTParser } from "./LT"
 import { MLOADParser } from "./MLOAD"
 import { MSTOREParser } from "./MSTORE"
 import { PUSHParser } from "./PUSH"
 import { SHRParser } from "./SHR"
+import { STOPParser } from "./STOP"
+import { SUBParser } from "./SUB"
+import { SWAPParser } from "./SWAP"
 export type { IOpcodeParser } from "./base";
 
 export const opcodeParsers: Record<string, IOpcodeParser> = {
@@ -26,7 +30,19 @@ export const opcodeParsers: Record<string, IOpcodeParser> = {
     // We got DUP's from 1 to 16.
     ...Object.fromEntries(
         new Array(16).fill(0).map((_, i) => [
-            `DUP${i+1}`, new DUPParser(i + 1)
+            `DUP${i + 1}`, new DUPParser(i + 1)
+        ])
+    ),
+    // We got SWAP's from 1 to 16.
+    ...Object.fromEntries(
+        new Array(16).fill(0).map((_, i) => [
+            `SWAP${i + 1}`, new SWAPParser(i + 1)
+        ])
+    ),
+    // We got LOG's from 0 to 4.
+    ...Object.fromEntries(
+        new Array(5).fill(0).map((_, i) => [
+            `LOG${i}`, new LOGParser(i)
         ])
     ),
     // Rest
@@ -44,4 +60,6 @@ export const opcodeParsers: Record<string, IOpcodeParser> = {
     CALLER: new CALLERParser(),
     CALLVALUE: new CALLVALUEParser(),
     ADD: new ADDParser(),
+    SUB: new SUBParser(),
+    STOP: new STOPParser(),
 }

@@ -1,6 +1,6 @@
 import { ComputedNumber, EVMValue, EVMValueTypes } from "../evm-value";
 import { assertBigInt, exists } from "../type-utils";
-import { unknownBaseStringToNumber } from "../utils";
+import { sliceOffset, unknownBaseStringToNumber } from "../utils";
 import type { IOpcodeParser, OpcodeParserParentContext } from "./base";
 
 export class CALLDATALOAD implements IOpcodeParser {
@@ -12,7 +12,7 @@ export class CALLDATALOAD implements IOpcodeParser {
             assertBigInt(calldata.value);
             assertBigInt(offset.value);
 
-            const slicedCalldata = calldata.value.toString(16).slice(Number(offset.value) * 2);
+            const slicedCalldata = sliceOffset(calldata.value, Number(offset.value));
 
             return unknownBaseStringToNumber(
                 slicedCalldata

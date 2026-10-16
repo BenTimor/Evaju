@@ -49,3 +49,7 @@ export function calculateLinesByOffset(lines: string[]) {
 export function shiftMultilineText(text: string) {
     return text.split("\n").map(line => `  ${line}`).join("\n");
 }
+
+export function sliceOffset(from: bigint, slice: number) {
+    return from.toString(16).slice(slice * 2);
+}
