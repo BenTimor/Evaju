@@ -58,6 +58,9 @@ export class EVMValue {
         }
 
         switch (typeof (val)) {
+            case "bigint":
+                this.numericValue = val;
+                break;
             case "number":
                 this.numericValue = BigInt(val);
                 break;

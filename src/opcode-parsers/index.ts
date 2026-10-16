@@ -1,3 +1,4 @@
+import { ADDParser } from "./ADD"
 import type { IOpcodeParser } from "./base"
 import { CALLDATALOAD } from "./CALLDATALOAD"
 import { CALLDATASIZEParser } from "./CALLDATASIZE"
@@ -42,4 +43,5 @@ export const opcodeParsers: Record<string, IOpcodeParser> = {
     MLOAD: new MLOADParser(),
     CALLER: new CALLERParser(),
     CALLVALUE: new CALLVALUEParser(),
+    ADD: new ADDParser(),
 }
