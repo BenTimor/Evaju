@@ -5,6 +5,7 @@ import { CALLDATALOAD } from "./CALLDATALOAD"
 import { CALLDATASIZEParser } from "./CALLDATASIZE"
 import { CALLERParser } from "./CALLER"
 import { CALLVALUEParser } from "./CALLVALUE"
+import { CODECOPYParser } from "./CODECOPY"
 import { DUPParser } from "./DUP"
 import { EQParser } from "./EQ"
 import { GTParser } from "./GT"
@@ -78,4 +79,5 @@ export const opcodeParsers: Record<string, IOpcodeParser> = {
     OR: new ORParser(),
     RETURN: new RETURNParser(),
     ADDRESS: new ADDRESSParser(),
+    CODECOPY: new CODECOPYParser(),
 }

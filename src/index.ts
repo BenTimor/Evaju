@@ -2,10 +2,11 @@ import { readFile, writeFile } from "node:fs/promises";
 import { EVMValue } from "./evm-value";
 import { calculateLinesByOffset, getInstructionFromLine, lineBytes } from "./utils";
 import { opcodeParsers, type IOpcodeParser } from "./opcode-parsers";
+import { OpcodeCSV } from "./opcodes";
 
 const config = {}
 
-function parseOpcode(opcode: string, offset: number = 0, stack: EVMValue[] = [], memory: Record<string, EVMValue> = {}, visitedOffset: Set<number> = new Set(), depth: number = 0): string {
+function parseOpcode(opcode: string, offset: number = 0, stack: EVMValue[] = [], memory: Record<string, EVMValue> = {}, unknownInstructions: Set<string> = new Set(), visitedOffset: Set<number> = new Set(), depth: number = 0): string {
     const lines = opcode.split("\n");
     const linesByOffset = calculateLinesByOffset(lines);
     const readableCodeBuilder: string[] = [];
@@ -45,7 +46,7 @@ function parseOpcode(opcode: string, offset: number = 0, stack: EVMValue[] = [],
                 originalOffset: offset,
                 stack,
                 readableCodeBuilder,
-                parentCallback: (...args) => parseOpcode(...args, new Set(visitedOffset), depth + 1),
+                parentCallback: (...args) => parseOpcode(...args, unknownInstructions, new Set(visitedOffset), depth + 1),
                 config,
             });
 
@@ -56,7 +57,10 @@ function parseOpcode(opcode: string, offset: number = 0, stack: EVMValue[] = [],
             currentOffset += lineBytes(line);
         }
         else {
-            console.warn(`Unknown instruction ${instruction}. Ignoring and continuing.`);
+            if (!unknownInstructions.has(instruction)) {
+                console.warn(`Unknown instruction ${instruction}. Ignoring and continuing.`);
+                unknownInstructions.add(instruction);
+            }
         }
     }
 
@@ -64,7 +68,9 @@ function parseOpcode(opcode: string, offset: number = 0, stack: EVMValue[] = [],
 }
 
 async function main() {
-    const opcodeExample = (await readFile("easy.opcode")).toString();
+    await OpcodeCSV.init();
+    
+    const opcodeExample = (await readFile("easy.opcode")).toString().replaceAll("(Unknown Opcode)", "").replaceAll("'", "");
     console.log("Starting to parse");
     const parsedCode = parseOpcode(opcodeExample);
     console.log("Code parsed. Writing to file.");
