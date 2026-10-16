@@ -2,7 +2,10 @@ import type { IOpcodeParser } from "./base"
 import { CALLDATALOAD } from "./CALLDATALOAD"
 import { CALLDATASIZEParser } from "./CALLDATASIZE"
 import { DUPParser } from "./DUP"
-import { JUMPIParser } from "./JUMPI"
+import { EQParser } from "./EQ"
+import { GTParser } from "./GT"
+import { JUMPParser } from "./JUMP"
+import { JUMPDESTParser } from "./JUMPDEST"
 import { LTParser } from "./LT"
 import { MSTOREParser } from "./MSTORE"
 import { PUSHParser } from "./PUSH"
@@ -24,9 +27,13 @@ export const opcodeParsers: Record<string, IOpcodeParser> = {
     ),
     // Rest
     CALLDATASIZE: new CALLDATASIZEParser(),
-    JUMPI: new JUMPIParser(),
+    JUMP: new JUMPParser(false),
+    JUMPI: new JUMPParser(true),
+    JUMPDEST: new JUMPDESTParser(),
     LT: new LTParser(),
     MSTORE: new MSTOREParser(),
     CALLDATALOAD: new CALLDATALOAD(),
     SHR: new SHRParser(),
+    GT: new GTParser(),
+    EQ: new EQParser(),
 }

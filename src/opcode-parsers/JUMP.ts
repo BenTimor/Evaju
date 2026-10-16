@@ -1,9 +1,11 @@
-import { EVMValueTypes } from "../evm-value";
+import { EVMValue, EVMValueTypes } from "../evm-value";
 import { assertBigInt, exists } from "../type-utils";
 import { getInstructionFromLine, lineBytes, shiftMultilineText } from "../utils";
 import type { IOpcodeParser, OpcodeParserParentContext } from "./base";
 
-export class JUMPIParser implements IOpcodeParser {
+export class JUMPParser implements IOpcodeParser {
+    constructor(private jumpi: boolean) {}
+
     parse(_args: string[], {
         opcode,
         stack,
@@ -15,7 +17,7 @@ export class JUMPIParser implements IOpcodeParser {
         line,
     }: OpcodeParserParentContext): boolean {
         const counter = stack.pop();
-        const b = stack.pop();
+        const b = this.jumpi ? stack.pop() : new EVMValue(1, EVMValueTypes.NUMBER);
 
         exists(b);
         exists(counter);
@@ -32,7 +34,7 @@ export class JUMPIParser implements IOpcodeParser {
                     _readableCodeBuilder.push(parentCallback(opcode, Number(counter.value), [ ...stack ], { ...memory }));
                 }
                 else {
-                    _readableCodeBuilder.push("// Revert by JUMPI");
+                    _readableCodeBuilder.push("// Revert by JUMP");
                 }
             }
             else {
