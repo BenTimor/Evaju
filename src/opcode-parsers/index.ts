@@ -14,6 +14,7 @@ import { LTParser } from "./LT"
 import { MLOADParser } from "./MLOAD"
 import { MSTOREParser } from "./MSTORE"
 import { PUSHParser } from "./PUSH"
+import { REVERTParser } from "./REVERT"
 import { SHRParser } from "./SHR"
 import { STOPParser } from "./STOP"
 import { SUBParser } from "./SUB"
@@ -62,4 +63,5 @@ export const opcodeParsers: Record<string, IOpcodeParser> = {
     ADD: new ADDParser(),
     SUB: new SUBParser(),
     STOP: new STOPParser(),
+    REVERT: new REVERTParser(),
 }
