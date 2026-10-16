@@ -1,4 +1,5 @@
 import { ADDParser } from "./ADD"
+import { ADDRESSParser } from "./ADDRESS"
 import type { IOpcodeParser } from "./base"
 import { CALLDATALOAD } from "./CALLDATALOAD"
 import { CALLDATASIZEParser } from "./CALLDATASIZE"
@@ -76,4 +77,5 @@ export const opcodeParsers: Record<string, IOpcodeParser> = {
     MUL: new MULParser(),
     OR: new ORParser(),
     RETURN: new RETURNParser(),
+    ADDRESS: new ADDRESSParser(),
 }

@@ -16,6 +16,7 @@ export type OpcodeParserParentContext = {
         calldata?: EVMValue,
         caller?: EVMValue,
         value?: EVMValue,
+        address?: EVMValue,
     },
 }
 
