@@ -7,15 +7,17 @@ import { CALLVALUEParser } from "./CALLVALUE"
 import { DUPParser } from "./DUP"
 import { EQParser } from "./EQ"
 import { GTParser } from "./GT"
+import { ISZEROParser } from "./ISZERO"
 import { JUMPParser } from "./JUMP"
 import { JUMPDESTParser } from "./JUMPDEST"
 import { LOGParser } from "./LOG"
 import { LTParser } from "./LT"
 import { MLOADParser } from "./MLOAD"
 import { MSTOREParser } from "./MSTORE"
+import { POPParser } from "./POP"
 import { PUSHParser } from "./PUSH"
 import { REVERTParser } from "./REVERT"
-import { SHRParser } from "./SHR"
+import { SHParser } from "./SH"
 import { STOPParser } from "./STOP"
 import { SUBParser } from "./SUB"
 import { SWAPParser } from "./SWAP"
@@ -54,7 +56,8 @@ export const opcodeParsers: Record<string, IOpcodeParser> = {
     LT: new LTParser(),
     MSTORE: new MSTOREParser(),
     CALLDATALOAD: new CALLDATALOAD(),
-    SHR: new SHRParser(),
+    SHR: new SHParser(true),
+    SHL: new SHParser(false),
     GT: new GTParser(),
     EQ: new EQParser(),
     MLOAD: new MLOADParser(),
@@ -64,4 +67,6 @@ export const opcodeParsers: Record<string, IOpcodeParser> = {
     SUB: new SUBParser(),
     STOP: new STOPParser(),
     REVERT: new REVERTParser(),
+    ISZERO: new ISZEROParser(),
+    POP: new POPParser(),
 }
