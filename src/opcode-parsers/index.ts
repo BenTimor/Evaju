@@ -19,7 +19,7 @@ export const opcodeParsers: Record<string, IOpcodeParser> = {
     // We got DUP's from 1 to 16.
     ...Object.fromEntries(
         new Array(16).fill(0).map((_, i) => [
-            `DUP${i+1}`, new DUPParser(i)
+            `DUP${i+1}`, new DUPParser(i + 1)
         ])
     ),
     // Rest
