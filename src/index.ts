@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { EVMValue } from "./evm-value";
 import { calculateLinesByOffset, getInstructionFromLine, lineBytes } from "./utils";
 import { opcodeParsers, type IOpcodeParser } from "./opcode-parsers";
@@ -55,7 +55,8 @@ function parseOpcode(opcode: string, offset: number = 0, stack: EVMValue[] = [],
 
 async function main() {
     const opcodeExample = (await readFile("easy.opcode")).toString();
-    console.log(parseOpcode(opcodeExample));
+    await writeFile("output.evaju", parseOpcode(opcodeExample));
+    console.log("Done");
 }
 
 main();

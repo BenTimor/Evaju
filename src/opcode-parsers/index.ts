@@ -1,12 +1,15 @@
 import type { IOpcodeParser } from "./base"
 import { CALLDATALOAD } from "./CALLDATALOAD"
 import { CALLDATASIZEParser } from "./CALLDATASIZE"
+import { CALLERParser } from "./CALLER"
+import { CALLVALUEParser } from "./CALLVALUE"
 import { DUPParser } from "./DUP"
 import { EQParser } from "./EQ"
 import { GTParser } from "./GT"
 import { JUMPParser } from "./JUMP"
 import { JUMPDESTParser } from "./JUMPDEST"
 import { LTParser } from "./LT"
+import { MLOADParser } from "./MLOAD"
 import { MSTOREParser } from "./MSTORE"
 import { PUSHParser } from "./PUSH"
 import { SHRParser } from "./SHR"
@@ -36,4 +39,7 @@ export const opcodeParsers: Record<string, IOpcodeParser> = {
     SHR: new SHRParser(),
     GT: new GTParser(),
     EQ: new EQParser(),
+    MLOAD: new MLOADParser(),
+    CALLER: new CALLERParser(),
+    CALLVALUE: new CALLVALUEParser(),
 }

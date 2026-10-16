@@ -14,6 +14,8 @@ export type OpcodeParserParentContext = {
     parentCallback: (opcode: string, offset: number, stack: EVMValue[], memory: Record<string, EVMValue>) => string;
     config: {
         calldata?: EVMValue,
+        caller?: EVMValue,
+        value?: EVMValue,
     },
 }
 

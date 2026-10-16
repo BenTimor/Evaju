@@ -1,13 +1,8 @@
 import { assertNumber, everyExists, exists } from "./type-utils";
 import { unknownBaseStringToNumber } from "./utils";
 
-export enum CompileTimeDefinitions {
-    CALLDATASIZE,
-}
-
 export enum EVMValueTypes {
     NUMBER,
-    COMPILE_TIME_DEFINITION,
     COMPUTED_NUMBER,
 }
 
@@ -37,18 +32,8 @@ export class EVMValue {
     constructor(val: number, valType: EVMValueTypes.NUMBER)
     constructor(val: string, valType: EVMValueTypes.NUMBER)
     constructor(val: boolean, valType: EVMValueTypes.NUMBER)
-    constructor(val: CompileTimeDefinitions, valType: EVMValueTypes.COMPILE_TIME_DEFINITION)
     constructor(val: ComputedNumber<any>, valType: EVMValueTypes.COMPUTED_NUMBER, description: string)
     constructor(val: ConvertableValueTypes | ComputedNumber<any>, private valType: number, _description?: string) {
-        if (valType === EVMValueTypes.COMPILE_TIME_DEFINITION) {
-            assertNumber(val);
-
-            _description = CompileTimeDefinitions[val];
-            exists(_description);
-
-            this.descriptionValue = _description;
-        }
-
         if (val instanceof ComputedNumber) {
             if (val.computable) {
                 // We just compute it and let the switch take care of converting everything
