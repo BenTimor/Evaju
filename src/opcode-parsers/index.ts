@@ -14,6 +14,8 @@ import { LOGParser } from "./LOG"
 import { LTParser } from "./LT"
 import { MLOADParser } from "./MLOAD"
 import { MSTOREParser } from "./MSTORE"
+import { MULParser } from "./MUL"
+import { ORParser } from "./OR"
 import { POPParser } from "./POP"
 import { PUSHParser } from "./PUSH"
 import { REVERTParser } from "./REVERT"
@@ -70,4 +72,6 @@ export const opcodeParsers: Record<string, IOpcodeParser> = {
     ISZERO: new ISZEROParser(),
     POP: new POPParser(),
     AND: new ADDParser(),
+    MUL: new MULParser(),
+    OR: new ORParser(),
 }
