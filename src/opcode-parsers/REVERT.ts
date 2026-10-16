@@ -15,14 +15,13 @@ export class REVERTParser implements IOpcodeParser {
 
         if (valueInMemory?.valueType !== EVMValueTypes.NUMBER) {
             readableCodeBuilder.push(`// [REVERT] Return: Unknown`);
-            return false;
+            return true;
         }
 
         assertBigInt(valueInMemory.value);
 
         readableCodeBuilder.push(`// [REVERT] Return: ${sliceOffset(valueInMemory.value, Number(size.value))}`);
 
-        return false;
-
+        return true;
     }
 }

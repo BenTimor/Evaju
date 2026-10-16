@@ -18,6 +18,7 @@ import { MULParser } from "./MUL"
 import { ORParser } from "./OR"
 import { POPParser } from "./POP"
 import { PUSHParser } from "./PUSH"
+import { RETURNParser } from "./RETURN"
 import { REVERTParser } from "./REVERT"
 import { SHParser } from "./SH"
 import { STOPParser } from "./STOP"
@@ -74,4 +75,5 @@ export const opcodeParsers: Record<string, IOpcodeParser> = {
     AND: new ADDParser(),
     MUL: new MULParser(),
     OR: new ORParser(),
+    RETURN: new RETURNParser(),
 }

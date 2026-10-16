@@ -5,10 +5,14 @@ import { opcodeParsers, type IOpcodeParser } from "./opcode-parsers";
 
 const config = {}
 
-function parseOpcode(opcode: string, offset: number = 0, stack: EVMValue[] = [], memory: Record<string, EVMValue> = {}): string {
+function parseOpcode(opcode: string, offset: number = 0, stack: EVMValue[] = [], memory: Record<string, EVMValue> = {}, visitedOffset: Set<number> = new Set(), depth: number = 0): string {
     const lines = opcode.split("\n");
     const linesByOffset = calculateLinesByOffset(lines);
     const readableCodeBuilder: string[] = [];
+
+    if (depth === 50) {
+        return "// Depth too big";
+    }
 
     const startLineDetails = linesByOffset[offset];
 
@@ -19,6 +23,12 @@ function parseOpcode(opcode: string, offset: number = 0, stack: EVMValue[] = [],
     let currentOffset = offset;
 
     for (const line of lines.slice(startLineDetails.lineNumber)) {
+        if (visitedOffset.has(currentOffset)) {
+            return `// Recursion - Trying to call ${currentOffset} which equals to line number ${linesByOffset[currentOffset]?.lineNumber} with the code ${linesByOffset[currentOffset]?.line}`;
+        }
+
+        visitedOffset.add(currentOffset);
+
         const instruction = getInstructionFromLine(line);
         const args = line.split(" ").slice(1);
 
@@ -35,7 +45,7 @@ function parseOpcode(opcode: string, offset: number = 0, stack: EVMValue[] = [],
                 originalOffset: offset,
                 stack,
                 readableCodeBuilder,
-                parentCallback: (...args) => parseOpcode(...args),
+                parentCallback: (...args) => parseOpcode(...args, new Set(visitedOffset), depth + 1),
                 config,
             });
 
@@ -55,7 +65,10 @@ function parseOpcode(opcode: string, offset: number = 0, stack: EVMValue[] = [],
 
 async function main() {
     const opcodeExample = (await readFile("easy.opcode")).toString();
-    await writeFile("output.evaju", parseOpcode(opcodeExample));
+    console.log("Starting to parse");
+    const parsedCode = parseOpcode(opcodeExample);
+    console.log("Code parsed. Writing to file.");
+    await writeFile("output.evaju", parsedCode);
     console.log("Done");
 }
 
