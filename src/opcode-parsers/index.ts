@@ -69,4 +69,5 @@ export const opcodeParsers: Record<string, IOpcodeParser> = {
     REVERT: new REVERTParser(),
     ISZERO: new ISZEROParser(),
     POP: new POPParser(),
+    AND: new ADDParser(),
 }
