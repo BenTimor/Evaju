@@ -3,13 +3,14 @@ import { EVMValue } from "./evm-value";
 import { calculateLinesByOffset, getInstructionFromLine, lineBytes } from "./utils";
 import { opcodeParsers, type IOpcodeParser } from "./opcode-parsers";
 import { OpcodeCSV } from "./opcodes";
+import { AbstractInstruction } from "./code-builder";
 
 const config = {}
 
 function parseOpcode(opcode: string, offset: number = 0, stack: EVMValue[] = [], memory: Record<string, EVMValue> = {}, unknownInstructions: Set<string> = new Set(), visitedOffset: Set<number> = new Set(), depth: number = 0): string {
     const lines = opcode.split("\n");
     const linesByOffset = calculateLinesByOffset(lines);
-    const readableCodeBuilder: string[] = [];
+    const codeBuilder: AbstractInstruction[] = [];
 
     if (depth === 50) {
         return "// Depth too big";
@@ -45,7 +46,7 @@ function parseOpcode(opcode: string, offset: number = 0, stack: EVMValue[] = [],
                 opcode,
                 originalOffset: offset,
                 stack,
-                readableCodeBuilder,
+                codeBuilder,
                 parentCallback: (...args) => parseOpcode(...args, unknownInstructions, new Set(visitedOffset), depth + 1),
                 config,
             });
@@ -64,7 +65,7 @@ function parseOpcode(opcode: string, offset: number = 0, stack: EVMValue[] = [],
         }
     }
 
-    return readableCodeBuilder.join("\n");
+    return codeBuilder.join("\n");
 }
 
 async function main() {

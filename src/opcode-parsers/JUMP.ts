@@ -1,6 +1,7 @@
+import { CustomInstruction, IfStatementInstruction } from "../code-builder";
 import { EVMValue, EVMValueTypes } from "../evm-value";
 import { assertBigInt, exists } from "../type-utils";
-import { getInstructionFromLine, lineBytes, shiftMultilineText } from "../utils";
+import { getInstructionFromLine, lineBytes } from "../utils";
 import type { IOpcodeParser, OpcodeParserParentContext } from "./base";
 
 export class JUMPParser implements IOpcodeParser {
@@ -12,7 +13,7 @@ export class JUMPParser implements IOpcodeParser {
         linesByOffset,
         parentCallback,
         memory,
-        readableCodeBuilder,
+        codeBuilder,
         currentOffset,
         line,
     }: OpcodeParserParentContext): boolean {
@@ -45,15 +46,11 @@ export class JUMPParser implements IOpcodeParser {
         };
 
         if (b.valueType === EVMValueTypes.NUMBER && b.value !== BigInt(1)) {
-            readableCodeBuilder.push(counterCode());
+            codeBuilder.push(new CustomInstruction(counterCode()));
         }
         else if (b.valueType !== EVMValueTypes.NUMBER) {
-            readableCodeBuilder.push(`if (${b.description}) {`);
-            readableCodeBuilder.push(shiftMultilineText(counterCode()));
-            readableCodeBuilder.push("}");
-            readableCodeBuilder.push("else {");
-            readableCodeBuilder.push(shiftMultilineText(parentCallback(opcode, currentOffset + lineBytes(line), [ ...stack ], { ...memory })));
-            readableCodeBuilder.push("}");
+            codeBuilder.push(new IfStatementInstruction("if", counterCode(), b.description));
+            codeBuilder.push(new IfStatementInstruction("else", parentCallback(opcode, currentOffset + lineBytes(line), [ ...stack ], { ...memory })));
         }
         else {
             return false;

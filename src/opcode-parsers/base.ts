@@ -1,3 +1,4 @@
+import { AbstractInstruction } from "../code-builder";
 import type { EVMValue } from "../evm-value";
 import type { LinesByOffset } from "../utils";
 
@@ -9,7 +10,7 @@ export type OpcodeParserParentContext = {
     lines: string[],
     linesByOffset: LinesByOffset,
     currentOffset: number,
-    readableCodeBuilder: string[],
+    codeBuilder: AbstractInstruction[],
     line: string,
     parentCallback: (opcode: string, offset: number, stack: EVMValue[], memory: Record<string, EVMValue>) => string;
     config: {
