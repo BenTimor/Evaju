@@ -1,4 +1,4 @@
-import { assertNumber, everyExists, exists } from "./type-utils";
+import { assertBigInt, assertNumber, everyExists, exists } from "./type-utils";
 import { unknownBaseStringToNumber } from "./utils";
 
 export enum EVMValueTypes {
@@ -107,5 +107,80 @@ export class EVMValue {
 
     get description(): string {
         return this.descriptionValue;
+    }
+}
+
+export const validOperators = [
+    "&&",
+    "||",
+    "+",
+    "-",
+    ">>",
+    "<<",
+    "*",
+    "==",
+    ">",
+    "<",
+] as const;
+
+export type ValidOperator = typeof validOperators[number];
+
+type LogicCallback = (a: EVMValue, b: EVMValue) => ConvertableValueTypes;
+
+function multiOperatorsLogic<T extends string>(operators: T[], logic: (operator: T, a: EVMValue, b: EVMValue) => ConvertableValueTypes): Record<T, LogicCallback> {
+    return Object.fromEntries(operators.map(operator => [operator, (a: EVMValue, b: EVMValue) => {
+        return logic(operator, a, b);
+    }])) as unknown as Record<T, LogicCallback>
+}
+
+const validOperatorsLogic: Record<ValidOperator, LogicCallback> = {
+    ...multiOperatorsLogic(["&&", "||", "+", "-", "*", "==", ">", "<"], (operator, a, b) => {
+        assertBigInt(a.value);
+        assertBigInt(b.value);
+
+        switch (operator) {
+            case "&&":
+                return a.value && b.value;
+            case "||":
+                return a.value || b.value;
+            case "+":
+                return a.value + b.value;
+            case "-":
+                return a.value - b.value;
+            case "*":
+                return a.value * b.value;
+            case "==":
+                return a.value === b.value;
+            case ">":
+                return a.value > b.value;
+            case "<":
+                return a.value < b.value;
+            default:
+                throw new Error(`Invalid operator ${operator}`);
+        }
+    }),
+    ...multiOperatorsLogic(["<<", ">>"], (operator, a, b) => {
+        assertBigInt(a.value);
+        assertBigInt(b.value);
+
+        if (BigInt(a.value) >= 256n) {
+            return 0n;
+        }
+
+        const mask256 = (1n << 256n) - 1n;
+        const cleanValue = b.value & mask256;
+
+        return operator === ">>" ? cleanValue >> BigInt(a.value) : cleanValue << BigInt(a.value);
+    }),
+}
+
+export class EVMOperatorValue extends EVMValue {
+    constructor(operator: ValidOperator, a?: EVMValue, b?: EVMValue) {
+        exists(a);
+        exists(b);
+
+        const computed = new ComputedNumber((a, b) => validOperatorsLogic[operator](a, b), [a, b]);
+
+        super(computed, EVMValueTypes.COMPUTED_NUMBER, `(${a.description}) ${operator} (${b.description})`);
     }
 }

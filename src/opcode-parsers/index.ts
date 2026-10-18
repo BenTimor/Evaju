@@ -1,4 +1,3 @@
-import { ADDParser } from "./ADD"
 import { ADDRESSParser } from "./ADDRESS"
 import type { IOpcodeParser } from "./base"
 import { CALLDATALOAD } from "./CALLDATALOAD"
@@ -7,24 +6,18 @@ import { CALLERParser } from "./CALLER"
 import { CALLVALUEParser } from "./CALLVALUE"
 import { CODECOPYParser } from "./CODECOPY"
 import { DUPParser } from "./DUP"
-import { EQParser } from "./EQ"
-import { GTParser } from "./GT"
+import { GenericOperatorParser } from "./GenericOperator"
 import { ISZEROParser } from "./ISZERO"
 import { JUMPParser } from "./JUMP"
 import { JUMPDESTParser } from "./JUMPDEST"
 import { LOGParser } from "./LOG"
-import { LTParser } from "./LT"
 import { MLOADParser } from "./MLOAD"
 import { MSTOREParser } from "./MSTORE"
-import { MULParser } from "./MUL"
-import { ORParser } from "./OR"
 import { POPParser } from "./POP"
 import { PUSHParser } from "./PUSH"
 import { RETURNParser } from "./RETURN"
 import { REVERTParser } from "./REVERT"
-import { SHParser } from "./SH"
 import { STOPParser } from "./STOP"
-import { SUBParser } from "./SUB"
 import { SWAPParser } from "./SWAP"
 export type { IOpcodeParser } from "./base";
 
@@ -53,30 +46,31 @@ export const opcodeParsers: Record<string, IOpcodeParser> = {
             `LOG${i}`, new LOGParser(i)
         ])
     ),
+    // Generic operators
+    LT: new GenericOperatorParser("<"),
+    SHR: new GenericOperatorParser(">>"),
+    SHL: new GenericOperatorParser("<<"),
+    GT: new GenericOperatorParser(">"),
+    EQ: new GenericOperatorParser("=="),
+    ADD: new GenericOperatorParser("+"),
+    SUB: new GenericOperatorParser("-"),
+    AND: new GenericOperatorParser("=="),
+    MUL: new GenericOperatorParser("*"),
+    OR: new GenericOperatorParser("||"),
     // Rest
     CALLDATASIZE: new CALLDATASIZEParser(),
     JUMP: new JUMPParser(false),
     JUMPI: new JUMPParser(true),
     JUMPDEST: new JUMPDESTParser(),
-    LT: new LTParser(),
     MSTORE: new MSTOREParser(),
     CALLDATALOAD: new CALLDATALOAD(),
-    SHR: new SHParser(true),
-    SHL: new SHParser(false),
-    GT: new GTParser(),
-    EQ: new EQParser(),
     MLOAD: new MLOADParser(),
     CALLER: new CALLERParser(),
     CALLVALUE: new CALLVALUEParser(),
-    ADD: new ADDParser(),
-    SUB: new SUBParser(),
     STOP: new STOPParser(),
     REVERT: new REVERTParser(),
     ISZERO: new ISZEROParser(),
     POP: new POPParser(),
-    AND: new ADDParser(),
-    MUL: new MULParser(),
-    OR: new ORParser(),
     RETURN: new RETURNParser(),
     ADDRESS: new ADDRESSParser(),
     CODECOPY: new CODECOPYParser(),
