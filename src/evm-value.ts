@@ -83,7 +83,7 @@ export class EVMValue {
                 throw new Error(`Value of val ${val} couldn't be converted to a number.`);
         }
 
-        if (valType === EVMValueTypes.NUMBER) {
+        if (this.valType === EVMValueTypes.NUMBER) {
             this.descriptionValue = `${this.numericValue}`;
         }
     }

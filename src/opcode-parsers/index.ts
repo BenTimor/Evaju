@@ -1,5 +1,6 @@
 import { ADDRESSParser } from "./ADDRESS"
 import type { IOpcodeParser } from "./base"
+import { CALLParser } from "./CALL"
 import { CALLDATALOAD } from "./CALLDATALOAD"
 import { CALLDATASIZEParser } from "./CALLDATASIZE"
 import { CALLERParser } from "./CALLER"
@@ -56,7 +57,7 @@ export const opcodeParsers: Record<string, IOpcodeParser> = {
     EQ: new GenericOperatorParser("=="),
     ADD: new GenericOperatorParser("+"),
     SUB: new GenericOperatorParser("-"),
-    AND: new GenericOperatorParser("=="),
+    AND: new GenericOperatorParser("&&"),
     MUL: new GenericOperatorParser("*"),
     OR: new GenericOperatorParser("||"),
     // Rest
@@ -78,4 +79,5 @@ export const opcodeParsers: Record<string, IOpcodeParser> = {
     CODECOPY: new CODECOPYParser(),
     EXTCODESIZE: new EXTCODESIZEParser(),
     GAS: new GASParser(),
+    CALL: new CALLParser(),
 }
