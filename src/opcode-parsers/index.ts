@@ -6,6 +6,8 @@ import { CALLERParser } from "./CALLER"
 import { CALLVALUEParser } from "./CALLVALUE"
 import { CODECOPYParser } from "./CODECOPY"
 import { DUPParser } from "./DUP"
+import { EXTCODESIZEParser } from "./EXTCODESIZE"
+import { GASParser } from "./GAS"
 import { GenericOperatorParser } from "./GenericOperator"
 import { ISZEROParser } from "./ISZERO"
 import { JUMPParser } from "./JUMP"
@@ -74,4 +76,6 @@ export const opcodeParsers: Record<string, IOpcodeParser> = {
     RETURN: new RETURNParser(),
     ADDRESS: new ADDRESSParser(),
     CODECOPY: new CODECOPYParser(),
+    EXTCODESIZE: new EXTCODESIZEParser(),
+    GAS: new GASParser(),
 }
