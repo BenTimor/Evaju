@@ -1,5 +1,5 @@
 import { CustomInstruction, IfStatementInstruction } from "../code-builder";
-import { EVMValue, EVMValueTypes } from "../evm-value";
+import { EVMOperatorValue, EVMValue, EVMValueTypes } from "../evm-value";
 import { assertBigInt, exists } from "../type-utils";
 import { getInstructionFromLine, lineBytes } from "../utils";
 import type { IOpcodeParser, OpcodeParserParentContext } from "./base";
@@ -45,8 +45,28 @@ export class JUMPParser implements IOpcodeParser {
             codeBuilder.push(...counterCode());
         }
         else if (b.valueType !== EVMValueTypes.NUMBER) {
-            codeBuilder.push(new IfStatementInstruction("if", counterCode(), b.description));
-            codeBuilder.push(new IfStatementInstruction("else", parentCallback(opcode, currentOffset + lineBytes(line), [ ...stack ], { ...memory })));
+            const ifBody = counterCode();
+            const elseBody = parentCallback(opcode, currentOffset + lineBytes(line), [ ...stack ], { ...memory });
+
+            if (ifBody.join("") === elseBody.join("")) {
+                codeBuilder.push(...ifBody);
+                return true;
+            }
+
+            const outerIfInstruction = new IfStatementInstruction([b], [ifBody, elseBody]);
+
+            if (ifBody[0] instanceof IfStatementInstruction) {
+                const internalIfInstruction = ifBody[0];
+
+                if (internalIfInstruction.stringifiedBodyByIndex(-1) === outerIfInstruction.stringifiedBodyByIndex(-1)) {
+                    const conditions = internalIfInstruction.conditions.map(condition => new EVMOperatorValue("&&", b, condition));
+                    
+                    codeBuilder.push(new IfStatementInstruction(conditions, internalIfInstruction.bodies));
+
+                    return true;
+                }
+            }
+            codeBuilder.push(new IfStatementInstruction([b], [ifBody, elseBody]));
         }
         else {
             return false;

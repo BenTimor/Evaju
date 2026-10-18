@@ -1,4 +1,4 @@
-import { assertBigInt, assertNumber, everyExists, exists } from "./type-utils";
+import { assertBigInt, everyExists, exists } from "./type-utils";
 import { unknownBaseStringToNumber } from "./utils";
 
 export enum EVMValueTypes {
@@ -6,7 +6,7 @@ export enum EVMValueTypes {
     COMPUTED_NUMBER,
 }
 
-export type ConvertableValueTypes = number | string | boolean | BigInt;
+export type ConvertableValueTypes = number | string | boolean | BigInt | EVMValue;
 
 export class ComputedNumber<T extends EVMValue> {
     constructor(private callback: (...args: T[]) => ConvertableValueTypes, private values: (T | undefined)[]) { }
@@ -140,7 +140,7 @@ const validOperatorsLogic: Record<ValidOperator, LogicCallback> = {
 
         switch (operator) {
             case "&&":
-                return a.value && b.value;
+                return a.value || b.value;
             case "||":
                 return a.value || b.value;
             case "+":
@@ -175,12 +175,16 @@ const validOperatorsLogic: Record<ValidOperator, LogicCallback> = {
 }
 
 export class EVMOperatorValue extends EVMValue {
-    constructor(operator: ValidOperator, a?: EVMValue, b?: EVMValue) {
+    constructor(private _operator: ValidOperator, a?: EVMValue, b?: EVMValue) {
         exists(a);
         exists(b);
 
-        const computed = new ComputedNumber((a, b) => validOperatorsLogic[operator](a, b), [a, b]);
+        const computed = new ComputedNumber((a, b) => validOperatorsLogic[_operator](a, b), [a, b]);
 
-        super(computed, EVMValueTypes.COMPUTED_NUMBER, `(${a.description}) ${operator} (${b.description})`);
+        super(computed, EVMValueTypes.COMPUTED_NUMBER, `(${a.description}) ${_operator} (${b.description})`);
+    }
+
+    get operator() {
+        return this._operator;
     }
 }

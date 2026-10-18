@@ -1,3 +1,5 @@
+import { EVMValue } from "./evm-value";
+import { exists } from "./type-utils";
 import { shiftMultilineText } from "./utils";
 
 export abstract class AbstractInstruction {
@@ -19,24 +21,55 @@ export class CustomInstruction extends AbstractInstruction {
 }
 
 export class IfStatementInstruction extends AbstractInstruction {
-    constructor(type: "if" | "else if", body: AbstractInstruction[], condition: string)
-    constructor(type: "else", body: AbstractInstruction[])
-    constructor(private type: "if" | "else if" | "else", private body: AbstractInstruction[], private condition?: string) {
+    constructor(private _conditions: EVMValue[], private _bodies: AbstractInstruction[][]) {
         super();
     }
 
     public stringifyInstruction(): string {
         const builder: string[] = [];
 
-        if (this.condition) {
-            builder.push(`${this.type} (${this.condition}) {`);
+        for (const bodyIndex in this._bodies) {
+            const body = this._bodies[bodyIndex];
+            const condition = this._conditions[bodyIndex];
+            exists(body);
+
+            if (condition) {
+                builder.push(`${+bodyIndex === 0 ? "if" : "if else"} (${condition.description}) {`);
+                builder.push(shiftMultilineText(body.join("\n")));
+                builder.push(shiftMultilineText("// Stop succesfully"));
+                builder.push("}");
+            }
+            else {
+                builder.push(body.join("\n"));
+            }
         }
-        else {
-            builder.push(`${this.type} {`);
-        }
-        builder.push(shiftMultilineText(this.body.join("\n")));
-        builder.push("}");
 
         return builder.join("\n");
+    }
+
+    get conditions() {
+        return this._conditions;
+    }
+
+    get bodies() {
+        return this._bodies;
+    }
+
+    public conditionByIndex(index: number) {
+        const condition = this._conditions.at(index);
+        exists(condition);
+
+        return condition;
+    }
+
+    public bodyByIndex(index: number): AbstractInstruction[] {
+        const body = this._bodies.at(index);
+        exists(body);
+
+        return body;
+    }
+
+    public stringifiedBodyByIndex(index: number): string {
+        return this.bodyByIndex(index).join("\n");
     }
 }
