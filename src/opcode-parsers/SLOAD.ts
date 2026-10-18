@@ -1,5 +1,5 @@
-import { EVMValue, EVMValueTypes } from "../evm-value";
-import { exists } from "../type-utils";
+import { ComputedNumber, EVMValue, EVMValueTypes } from "../evm-value";
+import { assertBigInt, exists } from "../type-utils";
 import { IOpcodeParser, OpcodeParserParentContext } from "./base";
 
 export class SLOADParser implements IOpcodeParser {
@@ -9,12 +9,13 @@ export class SLOADParser implements IOpcodeParser {
 
         const sValue = storage[key.key];
 
-        if (sValue) {
-            stack.push(sValue);
-        }
-        else {
-            stack.push(new EVMValue(0, EVMValueTypes.NUMBER)); // TODO We might want to re-think this part
-        }
+        const computed = new ComputedNumber(sValue => {
+            assertBigInt(sValue.value);
+
+            return sValue.value;
+        }, [sValue]);
+
+        stack.push(new EVMValue(computed, EVMValueTypes.COMPUTED_NUMBER, `[STORAGE[${key.description}]]`));
 
         return false;
     }

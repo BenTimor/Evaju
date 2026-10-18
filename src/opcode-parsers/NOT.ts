@@ -7,9 +7,9 @@ export class NOTParser implements IOpcodeParser {
         const a = stack.pop();
 
         const computed = new ComputedNumber(a => {
-            assertBigInt(a);
+            assertBigInt(a.value);
 
-            return ~a;
+            return ~a.value;
         }, [a])
 
         stack.push(new EVMValue(computed, EVMValueTypes.COMPUTED_NUMBER, `~${a?.description}`));

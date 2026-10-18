@@ -1,6 +1,7 @@
 import { ADDRESSParser } from "./ADDRESS"
 import type { IOpcodeParser } from "./base"
 import { CALLParser } from "./CALL"
+import { CALLDATACOPYParser } from "./CALLDATACOPY"
 import { CALLDATALOAD } from "./CALLDATALOAD"
 import { CALLDATASIZEParser } from "./CALLDATASIZE"
 import { CALLERParser } from "./CALLER"
@@ -25,6 +26,7 @@ import { RETURNDATASIZEParser } from "./RETURNDATASIZE"
 import { REVERTParser } from "./REVERT"
 import { SLOADParser } from "./SLOAD"
 import { SSTOREParser } from "./SSTORE"
+import { STATICCALLParser } from "./STATICCALL"
 import { STOPParser } from "./STOP"
 import { SWAPParser } from "./SWAP"
 export type { IOpcodeParser } from "./base";
@@ -65,6 +67,7 @@ export const opcodeParsers: Record<string, IOpcodeParser> = {
     AND: new GenericOperatorParser("&"),
     MUL: new GenericOperatorParser("*"),
     OR: new GenericOperatorParser("|"),
+    DIV: new GenericOperatorParser("/"),
     // Rest
     CALLDATASIZE: new CALLDATASIZEParser(),
     JUMP: new JUMPParser(false),
@@ -92,4 +95,6 @@ export const opcodeParsers: Record<string, IOpcodeParser> = {
     KECCAK256: new KECCAK256Parser(),
     NOT: new NOTParser(),
     SSTORE: new SSTOREParser(),
+    STATICCALL: new STATICCALLParser(),
+    CALLDATACOPY: new CALLDATACOPYParser(),
 }
