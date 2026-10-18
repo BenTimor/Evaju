@@ -19,6 +19,7 @@ import { MSTOREParser } from "./MSTORE"
 import { POPParser } from "./POP"
 import { PUSHParser } from "./PUSH"
 import { RETURNParser } from "./RETURN"
+import { RETURNDATASIZEParser } from "./RETURNDATASIZE"
 import { REVERTParser } from "./REVERT"
 import { STOPParser } from "./STOP"
 import { SWAPParser } from "./SWAP"
@@ -80,4 +81,6 @@ export const opcodeParsers: Record<string, IOpcodeParser> = {
     EXTCODESIZE: new EXTCODESIZEParser(),
     GAS: new GASParser(),
     CALL: new CALLParser(),
+    RETURNDATASIZE: new RETURNDATASIZEParser(),
+    RETURNDATACOPY: new RETURNDATASIZEParser(),
 }
