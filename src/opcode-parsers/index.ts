@@ -13,6 +13,7 @@ import { GenericOperatorParser } from "./GenericOperator"
 import { ISZEROParser } from "./ISZERO"
 import { JUMPParser } from "./JUMP"
 import { JUMPDESTParser } from "./JUMPDEST"
+import { KECCAK256Parser } from "./KECCAK256"
 import { LOGParser } from "./LOG"
 import { MLOADParser } from "./MLOAD"
 import { MSTOREParser } from "./MSTORE"
@@ -85,4 +86,6 @@ export const opcodeParsers: Record<string, IOpcodeParser> = {
     RETURNDATASIZE: new RETURNDATASIZEParser(),
     RETURNDATACOPY: new RETURNDATASIZEParser(),
     SLOAD: new SLOADParser(),
+    SHA3: new KECCAK256Parser(),
+    KECCAK256: new KECCAK256Parser(),
 }

@@ -15,7 +15,8 @@
   "packageManager": "pnpm@10.28.1",
   "dependencies": {
     "papaparse": "^5.7.0",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "viem": "^2.57.7"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",
