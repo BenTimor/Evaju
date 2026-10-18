@@ -1,4 +1,4 @@
-import { AbstractInstruction, CustomInstruction, IfStatementInstruction } from "../code-builder";
+import { CustomInstruction, IfStatementInstruction } from "../code-builder";
 import { EVMValue, EVMValueTypes } from "../evm-value";
 import { assertBigInt, exists } from "../type-utils";
 import { getInstructionFromLine, lineBytes } from "../utils";
