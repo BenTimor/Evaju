@@ -17,6 +17,7 @@ import { KECCAK256Parser } from "./KECCAK256"
 import { LOGParser } from "./LOG"
 import { MLOADParser } from "./MLOAD"
 import { MSTOREParser } from "./MSTORE"
+import { NOTParser } from "./NOT"
 import { POPParser } from "./POP"
 import { PUSHParser } from "./PUSH"
 import { RETURNParser } from "./RETURN"
@@ -88,4 +89,5 @@ export const opcodeParsers: Record<string, IOpcodeParser> = {
     SLOAD: new SLOADParser(),
     SHA3: new KECCAK256Parser(),
     KECCAK256: new KECCAK256Parser(),
+    NOT: new NOTParser(),
 }
