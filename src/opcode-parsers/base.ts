@@ -12,7 +12,7 @@ export type OpcodeParserParentContext = {
     currentOffset: number,
     codeBuilder: AbstractInstruction[],
     line: string,
-    parentCallback: (opcode: string, offset: number, stack: EVMValue[], memory: Record<string, EVMValue>) => string;
+    parentCallback: (opcode: string, offset: number, stack: EVMValue[], memory: Record<string, EVMValue>) => AbstractInstruction[];
     config: {
         calldata?: EVMValue,
         caller?: EVMValue,

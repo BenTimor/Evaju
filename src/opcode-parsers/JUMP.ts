@@ -1,4 +1,4 @@
-import { CustomInstruction, IfStatementInstruction } from "../code-builder";
+import { AbstractInstruction, CustomInstruction, IfStatementInstruction } from "../code-builder";
 import { EVMValue, EVMValueTypes } from "../evm-value";
 import { assertBigInt, exists } from "../type-utils";
 import { getInstructionFromLine, lineBytes } from "../utils";
@@ -24,29 +24,25 @@ export class JUMPParser implements IOpcodeParser {
         exists(counter);
 
         const counterCode = () => {
-            const _readableCodeBuilder: string[] = [];
-
             if (counter.valueType === EVMValueTypes.NUMBER) {
                 assertBigInt(counter.value);
                 // Theoretically there might be an issue here, but I think it's pretty save to ignore it right now.
                 const lineWithOffset = linesByOffset[Number(counter.value)];
 
                 if (lineWithOffset && getInstructionFromLine(lineWithOffset.line) === "JUMPDEST") {
-                    _readableCodeBuilder.push(parentCallback(opcode, Number(counter.value), [ ...stack ], { ...memory }));
+                    return parentCallback(opcode, Number(counter.value), [ ...stack ], { ...memory });
                 }
                 else {
-                    _readableCodeBuilder.push("// Revert by JUMP");
+                    return [new CustomInstruction("// Revert by JUMP")];
                 }
             }
             else {
-                _readableCodeBuilder.push(`// JUMP to ${counter.description}`);
+                return [new CustomInstruction(`// JUMP to ${counter.description}`)];
             }
-
-            return _readableCodeBuilder.join("\n");
         };
 
         if (b.valueType === EVMValueTypes.NUMBER && b.value !== BigInt(1)) {
-            codeBuilder.push(new CustomInstruction(counterCode()));
+            codeBuilder.push(...counterCode());
         }
         else if (b.valueType !== EVMValueTypes.NUMBER) {
             codeBuilder.push(new IfStatementInstruction("if", counterCode(), b.description));

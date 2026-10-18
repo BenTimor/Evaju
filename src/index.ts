@@ -3,17 +3,17 @@ import { EVMValue } from "./evm-value";
 import { calculateLinesByOffset, getInstructionFromLine, lineBytes } from "./utils";
 import { opcodeParsers, type IOpcodeParser } from "./opcode-parsers";
 import { OpcodeCSV } from "./opcodes";
-import { AbstractInstruction } from "./code-builder";
+import { AbstractInstruction, CustomInstruction } from "./code-builder";
 
 const config = {}
 
-function parseOpcode(opcode: string, offset: number = 0, stack: EVMValue[] = [], memory: Record<string, EVMValue> = {}, unknownInstructions: Set<string> = new Set(), visitedOffset: Set<number> = new Set(), depth: number = 0): string {
+function parseOpcode(opcode: string, offset: number = 0, stack: EVMValue[] = [], memory: Record<string, EVMValue> = {}, unknownInstructions: Set<string> = new Set(), visitedOffset: Set<number> = new Set(), depth: number = 0): AbstractInstruction[] {
     const lines = opcode.split("\n");
     const linesByOffset = calculateLinesByOffset(lines);
     const codeBuilder: AbstractInstruction[] = [];
 
     if (depth === 50) {
-        return "// Depth too big";
+        return [new CustomInstruction("// Depth too big")];
     }
 
     const startLineDetails = linesByOffset[offset];
@@ -26,7 +26,7 @@ function parseOpcode(opcode: string, offset: number = 0, stack: EVMValue[] = [],
 
     for (const line of lines.slice(startLineDetails.lineNumber)) {
         if (visitedOffset.has(currentOffset)) {
-            return `// Recursion - Trying to call ${currentOffset} which equals to line number ${linesByOffset[currentOffset]?.lineNumber} with the code ${linesByOffset[currentOffset]?.line}`;
+            return [new CustomInstruction(`// Recursion - Trying to call ${currentOffset} which equals to line number ${linesByOffset[currentOffset]?.lineNumber} with the code ${linesByOffset[currentOffset]?.line}`)];
         }
 
         visitedOffset.add(currentOffset);
@@ -65,7 +65,7 @@ function parseOpcode(opcode: string, offset: number = 0, stack: EVMValue[] = [],
         }
     }
 
-    return codeBuilder.join("\n");
+    return codeBuilder;
 }
 
 async function main() {
@@ -75,7 +75,7 @@ async function main() {
     console.log("Starting to parse");
     const parsedCode = parseOpcode(opcodeExample);
     console.log("Code parsed. Writing to file.");
-    await writeFile("output.evaju", parsedCode);
+    await writeFile("output.evaju", parsedCode.join("\n"));
     console.log("Done");
 }
 
