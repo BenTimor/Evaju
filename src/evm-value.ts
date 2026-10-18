@@ -179,7 +179,7 @@ function buildAndInstruction(instructions: EVMValue[]): EVMValue {
             continue;
         }
 
-        value = new EVMOperatorValue("&&", value, instruction);
+        value = new EVMOperatorValue("&&", value, instruction, false);
     }
 
     exists(value);
@@ -193,6 +193,11 @@ function optimizeAndInstruction(instruction: EVMValue): EVMValue {
     }
 
     return instruction;
+}
+
+function formatOperatorDescription(operator: ValidOperator, a: EVMValue, b: EVMValue) {
+    return `(${a.description} ${operator} ${b.description})`;
+    // return `(\n${shiftMultilineText(a.description)}\n${shiftMultilineText(operator)}\n${shiftMultilineText(b.description)}\n)`;
 }
 
 const validOperatorsLogic: Record<ValidOperator, OperatorLogicValueType> = {
@@ -210,7 +215,7 @@ const validOperatorsLogic: Record<ValidOperator, OperatorLogicValueType> = {
                 return a.value && b.value;
             }, [a, b]);
 
-            return new EVMValue(computed, EVMValueTypes.COMPUTED_NUMBER, `(${a.description}) && (${b.description})`);
+            return new EVMValue(computed, EVMValueTypes.COMPUTED_NUMBER, formatOperatorDescription("&&", a, b));
         },
     },
     ...multiOperatorsLogic(["||", "+", "-", "*", "==", ">", "<"], (operator, a, b) => {
@@ -256,11 +261,11 @@ export class EVMOperatorValue extends EVMValue {
     private _a: EVMValue;
     private _b: EVMValue;
 
-    constructor(operator: ValidOperator, a?: EVMValue, b?: EVMValue) {
+    constructor(operator: ValidOperator, a?: EVMValue, b?: EVMValue, optimize = true) {
         exists(a);
         exists(b);
 
-        if (operator === "&&") {
+        if (optimize && operator === "&&") {
             a = optimizeAndInstruction(a);
             b = optimizeAndInstruction(b);
         }
@@ -270,7 +275,7 @@ export class EVMOperatorValue extends EVMValue {
         if (logic.type === "calculated") {
             const computed = new ComputedNumber((a, b) => logic.callback(a, b), [a, b]);
 
-            super(computed, EVMValueTypes.COMPUTED_NUMBER, `(${a.description}) ${operator} (${b.description})`);
+            super(computed, EVMValueTypes.COMPUTED_NUMBER, formatOperatorDescription(operator, a, b));
         }
         else {
             const val = logic.callback(a, b);
