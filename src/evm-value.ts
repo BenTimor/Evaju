@@ -189,12 +189,9 @@ function buildAndInstruction(instructions: EVMValue[]): EVMValue {
     return value;
 }
 
-function optimizeAndInstruction(instruction: EVMValue): EVMValue {
-    if (instruction instanceof EVMOperatorValue && instruction.operator === "&&") {
-        return buildAndInstruction(flatAndConditions(instruction));
-    }
-
-    return instruction;
+function createOptimizedAndInstruction(instructions: EVMValue[]): EVMValue {
+    const allFlattened = instructions.map(instruction => flatAndConditions(instruction)).flat();
+    return buildAndInstruction(allFlattened);
 }
 
 function formatOperatorDescription(operator: ValidOperator, a: EVMValue, b: EVMValue) {
@@ -272,8 +269,16 @@ export class EVMOperatorValue extends EVMValue {
         exists(b);
 
         if (optimize && operator === "&&") {
-            a = optimizeAndInstruction(a);
-            b = optimizeAndInstruction(b);
+            const optimizedInstruction = createOptimizedAndInstruction([a, b]);
+
+            // I have no idea right now how to handle the case where optimizedInstruction returns a non operator value
+            if (optimizedInstruction instanceof EVMOperatorValue && optimizedInstruction.operator === "&&") {
+                super(optimizedInstruction, EVMValueTypes.EVMVALUE);
+                this._a = optimizedInstruction.a;
+                this._b = optimizedInstruction.b;
+                this._operator = optimizedInstruction.operator;
+                return;
+            }
         }
 
         const logic = validOperatorsLogic[operator];
