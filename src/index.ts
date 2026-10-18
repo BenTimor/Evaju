@@ -7,7 +7,7 @@ import { AbstractInstruction, CustomInstruction } from "./code-builder";
 
 const config = {}
 
-function parseOpcode(opcode: string, offset: number = 0, stack: EVMValue[] = [], memory: Record<string, EVMValue> = {}, unknownInstructions: Set<string> = new Set(), visitedOffset: Set<number> = new Set(), depth: number = 0): AbstractInstruction[] {
+function parseOpcode(opcode: string, offset: number = 0, stack: EVMValue[] = [], memory: Record<string, EVMValue> = {}, storage: Record<string, EVMValue> = {}, unknownInstructions: Set<string> = new Set(), visitedOffset: Set<number> = new Set(), depth: number = 0): AbstractInstruction[] {
     const lines = opcode.split("\n");
     const linesByOffset = calculateLinesByOffset(lines);
     const codeBuilder: AbstractInstruction[] = [];
@@ -43,6 +43,7 @@ function parseOpcode(opcode: string, offset: number = 0, stack: EVMValue[] = [],
                 lines,
                 linesByOffset,
                 memory,
+                storage,
                 opcode,
                 originalOffset: offset,
                 stack,

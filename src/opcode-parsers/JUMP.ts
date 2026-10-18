@@ -5,7 +5,7 @@ import { getInstructionFromLine, lineBytes } from "../utils";
 import type { IOpcodeParser, OpcodeParserParentContext } from "./base";
 
 export class JUMPParser implements IOpcodeParser {
-    constructor(private jumpi: boolean) {}
+    constructor(private jumpi: boolean) { }
 
     parse(_args: string[], {
         opcode,
@@ -16,6 +16,7 @@ export class JUMPParser implements IOpcodeParser {
         codeBuilder,
         currentOffset,
         line,
+        storage,
     }: OpcodeParserParentContext): boolean {
         const counter = stack.pop();
         const b = this.jumpi ? stack.pop() : new EVMValue(1, EVMValueTypes.NUMBER);
@@ -30,7 +31,7 @@ export class JUMPParser implements IOpcodeParser {
                 const lineWithOffset = linesByOffset[Number(counter.value)];
 
                 if (lineWithOffset && getInstructionFromLine(lineWithOffset.line) === "JUMPDEST") {
-                    return parentCallback(opcode, Number(counter.value), [ ...stack ], { ...memory });
+                    return parentCallback(opcode, Number(counter.value), [...stack], { ...memory }, { ...storage });
                 }
                 else {
                     return [new CustomInstruction("// Revert by JUMP")];
@@ -46,7 +47,7 @@ export class JUMPParser implements IOpcodeParser {
         }
         else if (b.valueType !== EVMValueTypes.NUMBER) {
             const ifBody = counterCode();
-            const elseBody = parentCallback(opcode, currentOffset + lineBytes(line), [ ...stack ], { ...memory });
+            const elseBody = parentCallback(opcode, currentOffset + lineBytes(line), [...stack], { ...memory }, { ...storage });
 
             if (ifBody.join("") === elseBody.join("")) {
                 codeBuilder.push(...ifBody);
@@ -60,7 +61,7 @@ export class JUMPParser implements IOpcodeParser {
 
                 if (internalIfInstruction.stringifiedBodyByIndex(-1) === outerIfInstruction.stringifiedBodyByIndex(-1)) {
                     const conditions = internalIfInstruction.conditions.map(condition => new EVMOperatorValue("&&", b, condition));
-                    
+
                     codeBuilder.push(new IfStatementInstruction(conditions, internalIfInstruction.bodies));
 
                     return true;

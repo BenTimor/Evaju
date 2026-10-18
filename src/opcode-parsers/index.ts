@@ -21,6 +21,7 @@ import { PUSHParser } from "./PUSH"
 import { RETURNParser } from "./RETURN"
 import { RETURNDATASIZEParser } from "./RETURNDATASIZE"
 import { REVERTParser } from "./REVERT"
+import { SLOADParser } from "./SLOAD"
 import { STOPParser } from "./STOP"
 import { SWAPParser } from "./SWAP"
 export type { IOpcodeParser } from "./base";
@@ -83,4 +84,5 @@ export const opcodeParsers: Record<string, IOpcodeParser> = {
     CALL: new CALLParser(),
     RETURNDATASIZE: new RETURNDATASIZEParser(),
     RETURNDATACOPY: new RETURNDATASIZEParser(),
+    SLOAD: new SLOADParser(),
 }
