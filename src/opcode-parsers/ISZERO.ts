@@ -1,12 +1,14 @@
-import { EVMOperatorValue, EVMValue, EVMValueTypes } from "../evm-value";
-import { IOpcodeParser, OpcodeParserParentContext } from "./base";
+import { EVMValue, EVMValueTypes } from "../evm-value";
+import { OpcodeParserParentContext } from "./base";
+import { GenericOperatorParser } from "./GenericOperator";
 
-export class ISZEROParser implements IOpcodeParser {
-    parse(_args: string[], { stack }: OpcodeParserParentContext): boolean {
-        const a = stack.pop();
+export class ISZEROParser extends GenericOperatorParser {
+    constructor() {
+        super("==");
+    }
 
-        stack.push(new EVMOperatorValue("==", a, new EVMValue(0, EVMValueTypes.NUMBER)));
-
-        return false;
+    parse(_args: string[], context: OpcodeParserParentContext): boolean {
+        context.stack.push(new EVMValue(0, EVMValueTypes.NUMBER));
+        return super.parse(_args, context);
     }
 }

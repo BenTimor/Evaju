@@ -130,6 +130,8 @@ export const validOperators = [
     "==",
     ">",
     "<",
+    ">=",
+    "<=",
 ] as const;
 
 export type ValidOperator = typeof validOperators[number];
@@ -218,7 +220,7 @@ const validOperatorsLogic: Record<ValidOperator, OperatorLogicValueType> = {
             return new EVMValue(computed, EVMValueTypes.COMPUTED_NUMBER, formatOperatorDescription("&&", a, b));
         },
     },
-    ...multiOperatorsLogic(["||", "+", "-", "*", "==", ">", "<"], (operator, a, b) => {
+    ...multiOperatorsLogic(["||", "+", "-", "*", "==", ">", "<", ">=", "<="], (operator, a, b) => {
         assertBigInt(a.value);
         assertBigInt(b.value);
 
@@ -237,6 +239,10 @@ const validOperatorsLogic: Record<ValidOperator, OperatorLogicValueType> = {
                 return a.value > b.value;
             case "<":
                 return a.value < b.value;
+            case "<=":
+                return a.value <= b.value;
+            case ">=":
+                return a.value >= b.value;
             default:
                 throw new Error(`Invalid operator ${operator}`);
         }

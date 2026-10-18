@@ -19,7 +19,8 @@ export class CALLDATALOAD implements IOpcodeParser {
                 + (new Array(64 - slicedCalldata.length).fill(0).join("")) // Add 0s until we get back to 32 bytes
             );
         }, [offset, config.calldata]);
-        stack.push(new EVMValue(computed, EVMValueTypes.COMPUTED_NUMBER, `[Calldata[${offset.description}:${offset.description} + 64]]`));
+
+        stack.push(new EVMValue(computed, EVMValueTypes.COMPUTED_NUMBER, `[Calldata[${offset.description}]]`));
 
         return false;
     }
