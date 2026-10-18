@@ -3,10 +3,11 @@ import { unknownBaseStringToNumber } from "./utils";
 
 export enum EVMValueTypes {
     NUMBER,
+    EVMVALUE,
     COMPUTED_NUMBER,
 }
 
-export type ConvertableValueTypes = number | string | boolean | BigInt | EVMValue;
+export type ConvertableValueTypes = number | string | boolean | BigInt;
 
 export class ComputedNumber<T extends EVMValue> {
     constructor(private callback: (...args: T[]) => ConvertableValueTypes, private values: (T | undefined)[]) { }
@@ -29,11 +30,19 @@ export class EVMValue {
     private numericValue: BigInt | ComputedNumber<any>;
     private descriptionValue: string = "Unknown";
 
+    constructor(val: EVMValue, valType: EVMValueTypes.EVMVALUE)
     constructor(val: number, valType: EVMValueTypes.NUMBER)
     constructor(val: string, valType: EVMValueTypes.NUMBER)
     constructor(val: boolean, valType: EVMValueTypes.NUMBER)
     constructor(val: ComputedNumber<any>, valType: EVMValueTypes.COMPUTED_NUMBER, description: string)
-    constructor(val: ConvertableValueTypes | ComputedNumber<any>, private valType: number, _description?: string) {
+    constructor(val: EVMValue | ConvertableValueTypes | ComputedNumber<any>, private valType: number, _description?: string) {
+        if (val instanceof EVMValue) {
+            this.numericValue = val.value;
+            this.valType = val.valType;
+            this.descriptionValue = val.description;
+            return;
+        }
+
         if (val instanceof ComputedNumber) {
             if (val.computable) {
                 // We just compute it and let the switch take care of converting everything
@@ -127,20 +136,88 @@ export type ValidOperator = typeof validOperators[number];
 
 type LogicCallback = (a: EVMValue, b: EVMValue) => ConvertableValueTypes;
 
-function multiOperatorsLogic<T extends string>(operators: T[], logic: (operator: T, a: EVMValue, b: EVMValue) => ConvertableValueTypes): Record<T, LogicCallback> {
-    return Object.fromEntries(operators.map(operator => [operator, (a: EVMValue, b: EVMValue) => {
-        return logic(operator, a, b);
-    }])) as unknown as Record<T, LogicCallback>
+type EVMValueCallback = (a: EVMValue, b: EVMValue) => EVMValue;
+
+type OperatorLogicValueType = {
+    callback: LogicCallback,
+    type: "calculated",
+} | {
+    callback: EVMValueCallback,
+    type: "value",
+};
+
+function multiOperatorsLogic<T extends string>(operators: T[], logic: (operator: T, a: EVMValue, b: EVMValue) => ConvertableValueTypes): Record<T, OperatorLogicValueType> {
+    return Object.fromEntries(operators.map(operator => [operator, {
+        type: "calculated", callback: (a: EVMValue, b: EVMValue) => {
+            return logic(operator, a, b);
+        }
+    }])) as unknown as Record<T, OperatorLogicValueType>
 }
 
-const validOperatorsLogic: Record<ValidOperator, LogicCallback> = {
-    ...multiOperatorsLogic(["&&", "||", "+", "-", "*", "==", ">", "<"], (operator, a, b) => {
+function flatAndConditions(instruction: EVMValue): EVMValue[] {
+    if (instruction instanceof EVMOperatorValue && instruction.operator === "&&") {
+        return [...flatAndConditions(instruction.a), ...flatAndConditions(instruction.b)]
+    }
+    return [instruction];
+}
+
+function buildAndInstruction(instructions: EVMValue[]): EVMValue {
+    const seen: Set<string> = new Set();
+    let value: EVMValue | undefined;
+
+    for (const instruction of instructions) {
+        const desc = instruction.description;
+
+        if (seen.has(desc)) {
+            continue;
+        }
+
+        seen.add(desc);
+
+        if (!value) {
+            value = instruction;
+            continue;
+        }
+
+        value = new EVMOperatorValue("&&", value, instruction);
+    }
+
+    exists(value);
+
+    return value;
+}
+
+function optimizeAndInstruction(instruction: EVMValue): EVMValue {
+    if (instruction instanceof EVMOperatorValue && instruction.operator === "&&") {
+        return buildAndInstruction(flatAndConditions(instruction));
+    }
+
+    return instruction;
+}
+
+const validOperatorsLogic: Record<ValidOperator, OperatorLogicValueType> = {
+    "&&": {
+        type: "value",
+        callback: (a: EVMValue, b: EVMValue) => {
+            if (a.description === b.description) {
+                return a;
+            }
+
+            const computed = new ComputedNumber((a, b) => {
+                assertBigInt(a.value);
+                assertBigInt(b.value);
+
+                return a.value && b.value;
+            }, [a, b]);
+
+            return new EVMValue(computed, EVMValueTypes.COMPUTED_NUMBER, `(${a.description}) && (${b.description})`);
+        },
+    },
+    ...multiOperatorsLogic(["||", "+", "-", "*", "==", ">", "<"], (operator, a, b) => {
         assertBigInt(a.value);
         assertBigInt(b.value);
 
         switch (operator) {
-            case "&&":
-                return a.value || b.value;
             case "||":
                 return a.value || b.value;
             case "+":
@@ -175,16 +252,46 @@ const validOperatorsLogic: Record<ValidOperator, LogicCallback> = {
 }
 
 export class EVMOperatorValue extends EVMValue {
-    constructor(private _operator: ValidOperator, a?: EVMValue, b?: EVMValue) {
+    private _operator: ValidOperator;
+    private _a: EVMValue;
+    private _b: EVMValue;
+
+    constructor(operator: ValidOperator, a?: EVMValue, b?: EVMValue) {
         exists(a);
         exists(b);
 
-        const computed = new ComputedNumber((a, b) => validOperatorsLogic[_operator](a, b), [a, b]);
+        if (operator === "&&") {
+            a = optimizeAndInstruction(a);
+            b = optimizeAndInstruction(b);
+        }
 
-        super(computed, EVMValueTypes.COMPUTED_NUMBER, `(${a.description}) ${_operator} (${b.description})`);
+        const logic = validOperatorsLogic[operator];
+
+        if (logic.type === "calculated") {
+            const computed = new ComputedNumber((a, b) => logic.callback(a, b), [a, b]);
+
+            super(computed, EVMValueTypes.COMPUTED_NUMBER, `(${a.description}) ${operator} (${b.description})`);
+        }
+        else {
+            const val = logic.callback(a, b);
+
+            super(val, EVMValueTypes.EVMVALUE);
+        }
+
+        this._operator = operator;
+        this._a = a;
+        this._b = b;
     }
 
     get operator() {
         return this._operator;
+    }
+
+    get a() {
+        return this._a;
+    }
+
+    get b() {
+        return this._b;
     }
 }
