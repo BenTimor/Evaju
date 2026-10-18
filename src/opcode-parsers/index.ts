@@ -1,5 +1,6 @@
 import { ADDRESSParser } from "./ADDRESS"
 import type { IOpcodeParser } from "./base"
+import { BYTEParser } from "./BYTE"
 import { CALLParser } from "./CALL"
 import { CALLDATACOPYParser } from "./CALLDATACOPY"
 import { CALLDATALOAD } from "./CALLDATALOAD"
@@ -7,6 +8,7 @@ import { CALLDATASIZEParser } from "./CALLDATASIZE"
 import { CALLERParser } from "./CALLER"
 import { CALLVALUEParser } from "./CALLVALUE"
 import { CODECOPYParser } from "./CODECOPY"
+import { CREATE2Parser } from "./CREATE2"
 import { DUPParser } from "./DUP"
 import { EXTCODESIZEParser } from "./EXTCODESIZE"
 import { GASParser } from "./GAS"
@@ -68,6 +70,7 @@ export const opcodeParsers: Record<string, IOpcodeParser> = {
     MUL: new GenericOperatorParser("*"),
     OR: new GenericOperatorParser("|"),
     DIV: new GenericOperatorParser("/"),
+    EXP: new GenericOperatorParser("**"),
     // Rest
     CALLDATASIZE: new CALLDATASIZEParser(),
     JUMP: new JUMPParser(false),
@@ -97,4 +100,7 @@ export const opcodeParsers: Record<string, IOpcodeParser> = {
     SSTORE: new SSTOREParser(),
     STATICCALL: new STATICCALLParser(),
     CALLDATACOPY: new CALLDATACOPYParser(),
+    EXTCODECOPY: new EXTCODESIZEParser(),
+    CREATE2: new CREATE2Parser(),
+    BYTE: new BYTEParser(),
 }

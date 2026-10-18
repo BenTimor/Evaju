@@ -20,7 +20,7 @@ export class CODECOPYParser implements IOpcodeParser {
             const bytecode = OpcodeCSV.toBytecode(opcode);
             const slicedBytecode = bytecode.slice(2).slice(Number(offset.value) * 2, Number(offset.value) * 2 + Number(size.value) * 2);
 
-            return "0x" + slicedBytecode + new Array(Number(size.value) - slicedBytecode.length).fill("0").join("");
+            return "0x" + slicedBytecode + new Array(Number(size.value) * 2 - slicedBytecode.length).fill("0").join("");
         }, [offset, size])
 
         memory[destOffset.key] = new EVMValue(computed, EVMValueTypes.COMPUTED_NUMBER, `[CODECOPY from offset ${offset.description} with size of ${size.description}]`)

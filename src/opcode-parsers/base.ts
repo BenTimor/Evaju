@@ -19,6 +19,7 @@ export type OpcodeParserParentContext = {
         caller?: EVMValue,
         value?: EVMValue,
         address?: EVMValue,
+        codes?: Record<number, EVMValue>,
         codeSizes?: Record<number, EVMValue>,
         gas?: EVMValue, // Theoretically we should update it during instructions
     },
