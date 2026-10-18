@@ -60,9 +60,9 @@ export const opcodeParsers: Record<string, IOpcodeParser> = {
     EQ: new GenericOperatorParser("=="),
     ADD: new GenericOperatorParser("+"),
     SUB: new GenericOperatorParser("-"),
-    AND: new GenericOperatorParser("&&"),
+    AND: new GenericOperatorParser("&"),
     MUL: new GenericOperatorParser("*"),
-    OR: new GenericOperatorParser("||"),
+    OR: new GenericOperatorParser("|"),
     // Rest
     CALLDATASIZE: new CALLDATASIZEParser(),
     JUMP: new JUMPParser(false),
