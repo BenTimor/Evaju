@@ -24,6 +24,7 @@ import { RETURNParser } from "./RETURN"
 import { RETURNDATASIZEParser } from "./RETURNDATASIZE"
 import { REVERTParser } from "./REVERT"
 import { SLOADParser } from "./SLOAD"
+import { SSTOREParser } from "./SSTORE"
 import { STOPParser } from "./STOP"
 import { SWAPParser } from "./SWAP"
 export type { IOpcodeParser } from "./base";
@@ -90,4 +91,5 @@ export const opcodeParsers: Record<string, IOpcodeParser> = {
     SHA3: new KECCAK256Parser(),
     KECCAK256: new KECCAK256Parser(),
     NOT: new NOTParser(),
+    SSTORE: new SSTOREParser(),
 }
