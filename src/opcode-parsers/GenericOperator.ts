@@ -13,6 +13,13 @@ export class GenericOperatorParser implements IOpcodeParser {
         exists(b);
 
         switch (this.operator) {
+            case "&&":
+            case "&":
+                if (a.description === b.description) {
+                    stack.push(a);
+                    return false;
+                }
+                break;
             case "+":
                 if (a.value === 0n) {
                     stack.push(b.clone());

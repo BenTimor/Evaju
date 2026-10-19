@@ -204,28 +204,13 @@ function formatOperatorDescription(operator: ValidOperator, a: EVMValue, b: EVMV
 }
 
 const validOperatorsLogic: Record<ValidOperator, OperatorLogicValueType> = {
-    "&&": {
-        type: "value",
-        callback: (a: EVMValue, b: EVMValue) => {
-            if (a.description === b.description) {
-                return a;
-            }
-
-            const computed = new ComputedNumber((a, b) => {
-                assertBigInt(a.value);
-                assertBigInt(b.value);
-
-                return a.value && b.value;
-            }, [a, b]);
-
-            return new EVMValue(computed, EVMValueTypes.COMPUTED_NUMBER, formatOperatorDescription("&&", a, b));
-        },
-    },
-    ...multiOperatorsLogic(["**", "/", "&", "|", "||", "+", "-", "*", "==", ">", "<", ">=", "<="], (operator, a, b) => {
+    ...multiOperatorsLogic(["&&", "**", "/", "&", "|", "||", "+", "-", "*", "==", ">", "<", ">=", "<="], (operator, a, b) => {
         assertBigInt(a.value);
         assertBigInt(b.value);
 
         switch (operator) {
+            case "&&":
+                return a.value && b.value;
             case "||":
                 return a.value || b.value;
             case "+":
@@ -284,7 +269,7 @@ export class EVMOperatorValue extends EVMValue {
             const optimizedInstruction = createOptimizedAndInstruction([a, b], operator === "&");
 
             // I have no idea right now how to handle the case where optimizedInstruction returns a non operator value
-            if (optimizedInstruction instanceof EVMOperatorValue && optimizedInstruction.operator === operator) {
+            if (optimizedInstruction instanceof EVMOperatorValue) {
                 super(optimizedInstruction, EVMValueTypes.EVMVALUE);
                 this._a = optimizedInstruction.a;
                 this._b = optimizedInstruction.b;
