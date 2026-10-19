@@ -36,7 +36,7 @@ export class IfStatementInstruction extends AbstractInstruction {
             if (condition) {
                 builder.push(`${+bodyIndex === 0 ? "if" : "if else"} (${condition.description}) {`);
                 builder.push(shiftMultilineText(body.join("\n")));
-                builder.push(shiftMultilineText("// Stop succesfully"));
+                builder.push(shiftMultilineText("// Stop program (by if)"));
                 builder.push("}");
             }
             else {
