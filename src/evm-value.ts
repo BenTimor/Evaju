@@ -142,6 +142,7 @@ export const validOperators = [
     "<=",
     "**",
     "!=",
+    "false",
 ] as const;
 
 export type ValidOperator = typeof validOperators[number];
@@ -182,10 +183,43 @@ const reversedOperator = {
     "!=": "!=",
 } as const;
 
-function buildLogicInstruction(instructions: EVMValue[], operator: ValidOperator): EVMValue {
-    const seen: Set<string> = new Set();
+function buildAndInstruction(instructions: EVMValue[], operator: ValidOperator): EVMValue {
+    if (instructions.some(inst => inst.value === 0n)) {
+        return new EVMOperatorValue("false");
+    }
+    
     let value: EVMValue | undefined;
+    
+    const required: Set<string> = new Set();
+    const equalZero: Set<string> = new Set();
 
+    // Simple == 0x0 to required param
+    for (const instruction of instructions) {
+        if (
+            instruction instanceof EVMOperatorValue 
+            && instruction.operator === "=="
+            && (instruction.a.value === 0n || instruction.b.value === 0n)
+        ) {
+            const nonZero = instruction.a.value === 0n ? instruction.b : instruction.a;
+            const nonZeroDesc = nonZero.description;
+
+            if (required.has(nonZeroDesc)) {
+                return new EVMOperatorValue("false");
+            }
+
+            equalZero.add(nonZeroDesc);
+        }
+        else {
+            if (equalZero.has(instruction.description)) {
+                return new EVMOperatorValue("false");
+            }
+
+            required.add(instruction.description);
+        }
+    }
+    
+    const seen: Set<string> = new Set();
+    // Operators / Seen
     for (const instruction of instructions) {
         const desc = instruction.description;
 
@@ -452,7 +486,7 @@ function buildLogicInstruction(instructions: EVMValue[], operator: ValidOperator
 
 function createOptimizedLogicInstruction(instructions: EVMValue[], operator: ValidOperator): EVMValue {
     const allFlattened = instructions.map(instruction => flatLogicInstruction(instruction, operator)).flat();
-    return buildLogicInstruction(allFlattened, operator);
+    return buildAndInstruction(allFlattened, operator);
 }
 
 function formatOperatorDescription(operator: ValidOperator, a: EVMValue, b: EVMValue) {
@@ -467,7 +501,7 @@ function formatOperatorDescription(operator: ValidOperator, a: EVMValue, b: EVMV
 }
 
 const validOperatorsLogic: Record<ValidOperator, OperatorLogicValueType> = {
-    ...multiOperatorsLogic(["!=", "&&", "**", "/", "&", "|", "||", "+", "-", "*", "==", ">", "<", ">=", "<="], (operator, a, b) => {
+    ...multiOperatorsLogic(["!=", "&&", "**", "/", "&", "|", "||", "+", "-", "*", "==", ">", "<", ">=", "<=", "false"], (operator, a, b) => {
         assertBigInt(a.value);
         assertBigInt(b.value);
 
@@ -502,6 +536,8 @@ const validOperatorsLogic: Record<ValidOperator, OperatorLogicValueType> = {
                 return b.value === 0n ? 0n : a.value / b.value;
             case "**":
                 return a.value ** b.value;
+            case "false":
+                return 0;
             default:
                 throw new Error(`Invalid operator ${operator}`);
         }
@@ -527,6 +563,14 @@ export class EVMOperatorValue extends EVMValue {
     private _b: EVMValue;
 
     constructor(operator: ValidOperator, a?: EVMValue, b?: EVMValue, optimize = true) {
+        if (operator === "false") {
+            super(0, EVMValueTypes.NUMBER);
+            this._operator = "false";
+            this._a = new EVMValue(0, EVMValueTypes.NUMBER);
+            this._b = new EVMValue(0, EVMValueTypes.NUMBER);
+            return;
+        }
+
         exists(a);
         exists(b);
 
