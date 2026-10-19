@@ -5,6 +5,7 @@ export enum EVMValueTypes {
     NUMBER,
     EVMVALUE,
     COMPUTED_NUMBER,
+    CUSTOM,
 }
 
 export type ConvertableValueTypes = number | string | boolean | BigInt;
@@ -31,11 +32,18 @@ export class EVMValue {
     private descriptionValue: string = "[UnknownValue]";
 
     constructor(val: EVMValue, valType: EVMValueTypes.EVMVALUE)
+    constructor(val: string, valType: EVMValueTypes.CUSTOM)
     constructor(val: number, valType: EVMValueTypes.NUMBER)
     constructor(val: string, valType: EVMValueTypes.NUMBER)
     constructor(val: boolean, valType: EVMValueTypes.NUMBER)
     constructor(val: ComputedNumber<any>, valType: EVMValueTypes.COMPUTED_NUMBER, description: string)
     constructor(val: EVMValue | ConvertableValueTypes | ComputedNumber<any>, private valType: number, _description?: string) {
+        if (this.valType === EVMValueTypes.CUSTOM) {
+            this.numericValue = new ComputedNumber((_) => 0, [undefined]);
+            this.descriptionValue = val as string;
+            return;
+        }
+        
         if (val instanceof EVMValue) {
             this.numericValue = val.value;
             this.valType = val.valType;
@@ -83,7 +91,10 @@ export class EVMValue {
     }
 
     public clone() {
-        if (this.value instanceof ComputedNumber) {
+        if (this.valType === EVMValueTypes.CUSTOM) {
+            return new EVMValue(this.description, this.valueType);
+        }
+        else if (this.value instanceof ComputedNumber) {
             return new EVMValue(this.value, this.valueType, this.description);
         }
         else {
@@ -208,12 +219,19 @@ function buildLogicInstruction(instructions: EVMValue[], operator: ValidOperator
             });
 
             if (normalizedInstructions.length) {
+                let isImpossible = false;
+
                 const reducedInstruction = normalizedInstructions.reduce((
                     { original: oPrev, normalized: nPrev },
                     { original: oCurr, normalized: nCurr }
                 ) => {
                     const { operator: prevOperator, a: prevA } = nPrev;
                     const { operator: currOperator, a: currA } = nCurr;
+
+                    if (isImpossible) {
+                        seen.add(oCurr.description);
+                        return { original: oCurr, normalized: nCurr };
+                    }
 
                     // true for curr, false for prev
                     const logicMap = {
@@ -222,24 +240,56 @@ function buildLogicInstruction(instructions: EVMValue[], operator: ValidOperator
                             ">": () => currA.value < prevA.value,
                             // prevA > b && currA >= b
                             ">=": () => currA.value < prevA.value,
+                            // prevA > b && currA < b (= prevA > b > currA)
+                            "<": () => {
+                                isImpossible = currA.value >= prevA.value;
+                            },
+                            // prevA > b && currA <= b (= prevA > b => currA)
+                            "<=": () => {
+                                isImpossible = currA.value >= prevA.value;
+                            },
                         },
                         ">=": {
                             // prevA >= b && currA > b
                             ">": () => currA.value <= prevA.value,
                             // prevA >= b && currA >= b
                             ">=": () => currA.value < prevA.value,
+                            // prevA >= b && currA < b (= prevA >= b > currA)
+                            "<": () => {
+                                isImpossible = currA.value >= prevA.value;
+                            },
+                            // prevA >= b && currA <= b (= prevA >= b >= currA)
+                            "<=": () => {
+                                isImpossible = currA.value > prevA.value;
+                            },
                         },
                         "<": {
                             // prevA < b && currA < b
                             "<": () => currA.value > prevA.value,
                             // prevA < b && currA <= b
                             "<=": () => currA.value > prevA.value,
+                            // prevA < b && currA > b (= prevA < b < currA)
+                            ">": () => {
+                                isImpossible = prevA.value >= currA.value;
+                            },
+                            // prevA < b && currA >= b (= prevA < b =< currA)
+                            ">=": () => {
+                                isImpossible = prevA.value >= currA.value;
+                            },
                         },
                         "<=": {
                             // prevA <= b && currA < b
                             "<": () => currA.value >= prevA.value,
                             // prevA <= b && currA <= b
                             "<=": () => currA.value > prevA.value,
+                            // prevA <= b && currA > b (= prevA <= b < currA)
+                            ">": () => {
+                                isImpossible = prevA.value >= currA.value;
+                            },
+                            // prevA <= b && currA >= b (= prevA <= b <= currA)
+                            ">=": () => {
+                                isImpossible = prevA.value > currA.value;
+                            },
                         }
                     } as const;
 
@@ -267,12 +317,18 @@ function buildLogicInstruction(instructions: EVMValue[], operator: ValidOperator
                     };
                 });
 
+                if (isImpossible) {
+                    console.warn("Impossibility found");
+                }
+
+                const _value = isImpossible ? new EVMValue(0, EVMValueTypes.NUMBER) : reducedInstruction.original;
+
                 if (!value) {
-                    value = reducedInstruction.original;
+                    value = _value;
                     continue;
                 }
 
-                value = new EVMOperatorValue(operator, value, reducedInstruction.original, false);
+                value = new EVMOperatorValue(operator, value, _value, false);
                 continue;
             }
         }
