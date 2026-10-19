@@ -58,14 +58,20 @@ export class JUMPParser implements IOpcodeParser {
 
             if (ifBody[0] instanceof IfStatementInstruction) {
                 const internalIfInstruction = ifBody[0];
+                const conditions: EVMValue[] = internalIfInstruction.conditions.map(condition => new EVMOperatorValue("&&", b, condition));
+                const bodies = internalIfInstruction.bodies;
 
                 if (internalIfInstruction.stringifiedBodyByIndex(-1) === outerIfInstruction.stringifiedBodyByIndex(-1)) {
-                    const conditions = internalIfInstruction.conditions.map(condition => new EVMOperatorValue("&&", b, condition));
-
-                    codeBuilder.push(new IfStatementInstruction(conditions, internalIfInstruction.bodies));
+                    codeBuilder.push(new IfStatementInstruction(conditions, bodies));
 
                     return true;
                 }
+
+                conditions.push(b);
+                bodies.push(elseBody);
+                
+                codeBuilder.push(new IfStatementInstruction(conditions, bodies));
+                return true;
             }
             codeBuilder.push(new IfStatementInstruction([b], [ifBody, elseBody]));
         }

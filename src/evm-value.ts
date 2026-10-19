@@ -28,7 +28,7 @@ export class ComputedNumber<T extends EVMValue> {
 
 export class EVMValue {
     private numericValue: BigInt | ComputedNumber<any>;
-    private descriptionValue: string = "Unknown";
+    private descriptionValue: string = "[UnknownValue]";
 
     constructor(val: EVMValue, valType: EVMValueTypes.EVMVALUE)
     constructor(val: number, valType: EVMValueTypes.NUMBER)
@@ -60,12 +60,6 @@ export class EVMValue {
             }
         }
 
-        if (val instanceof BigInt) {
-            this.descriptionValue = `${val.toString()}`;
-            this.numericValue = val;
-            return;
-        }
-
         switch (typeof (val)) {
             case "bigint":
                 this.numericValue = val;
@@ -84,7 +78,7 @@ export class EVMValue {
         }
 
         if (this.valType === EVMValueTypes.NUMBER) {
-            this.descriptionValue = `${this.numericValue}`;
+            this.descriptionValue = `0x${this.numericValue.toString(16)}`;
         }
     }
 
