@@ -43,7 +43,7 @@ export class EVMValue {
             this.descriptionValue = val as string;
             return;
         }
-        
+
         if (val instanceof EVMValue) {
             this.numericValue = val.value;
             this.valType = val.valType;
@@ -195,7 +195,8 @@ function buildLogicInstruction(instructions: EVMValue[], operator: ValidOperator
         seen.add(desc);
 
         if (instruction instanceof EVMOperatorValue && (instruction.a.valueType === EVMValueTypes.NUMBER || instruction.b.valueType === EVMValueTypes.NUMBER)) {
-            const nonNumericDesc = instruction.a.valueType === EVMValueTypes.NUMBER ? instruction.b.description : instruction.a.description;
+            const nonNumericInstruction = instruction.a.valueType === EVMValueTypes.NUMBER ? instruction.b : instruction.a;
+            const nonNumericDesc = nonNumericInstruction.description;
 
             const normalizedInstructions = ([instruction, ...instructions].filter(inst =>
                 inst instanceof EVMOperatorValue
@@ -515,6 +516,16 @@ export class EVMOperatorValue extends EVMValue {
             }
         }
 
+        if (optimize && ["=="].includes(operator) && (a.value === 0n || b.value === 0n)) {
+            const nonZero = a.value === 0n ? b : a;
+
+            if (nonZero instanceof EVMOperatorValue && nonZero.operator === "==") {
+                operator = "!=";
+                a = nonZero.a;
+                b = nonZero.b;
+            }
+        }
+
         const logic = validOperatorsLogic[operator];
 
         if (logic.type === "calculated") {
@@ -543,5 +554,9 @@ export class EVMOperatorValue extends EVMValue {
 
     get b() {
         return this._b;
+    }
+
+    public clone(): EVMOperatorValue {
+        return new EVMOperatorValue(this.operator, this.a, this.b);
     }
 }
