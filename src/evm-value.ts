@@ -160,14 +160,14 @@ function multiOperatorsLogic<T extends string>(operators: T[], logic: (operator:
     }])) as unknown as Record<T, OperatorLogicValueType>
 }
 
-function flatAndConditions(instruction: EVMValue): EVMValue[] {
-    if (instruction instanceof EVMOperatorValue && instruction.operator === "&&") {
-        return [...flatAndConditions(instruction.a), ...flatAndConditions(instruction.b)]
+function flatAndConditions(instruction: EVMValue, binary: boolean): EVMValue[] {
+    if (instruction instanceof EVMOperatorValue && instruction.operator === (binary ? "&" : "&&")) {
+        return [...flatAndConditions(instruction.a, binary), ...flatAndConditions(instruction.b, binary)]
     }
     return [instruction];
 }
 
-function buildAndInstruction(instructions: EVMValue[]): EVMValue {
+function buildAndInstruction(instructions: EVMValue[], binary: boolean): EVMValue {
     const seen: Set<string> = new Set();
     let value: EVMValue | undefined;
 
@@ -185,7 +185,7 @@ function buildAndInstruction(instructions: EVMValue[]): EVMValue {
             continue;
         }
 
-        value = new EVMOperatorValue("&&", value, instruction, false);
+        value = new EVMOperatorValue(binary ? "&" : "&&", value, instruction, false);
     }
 
     exists(value);
@@ -193,9 +193,9 @@ function buildAndInstruction(instructions: EVMValue[]): EVMValue {
     return value;
 }
 
-function createOptimizedAndInstruction(instructions: EVMValue[]): EVMValue {
-    const allFlattened = instructions.map(instruction => flatAndConditions(instruction)).flat();
-    return buildAndInstruction(allFlattened);
+function createOptimizedAndInstruction(instructions: EVMValue[], binary: boolean): EVMValue {
+    const allFlattened = instructions.map(instruction => flatAndConditions(instruction, binary)).flat();
+    return buildAndInstruction(allFlattened, binary);
 }
 
 function formatOperatorDescription(operator: ValidOperator, a: EVMValue, b: EVMValue) {
@@ -280,11 +280,11 @@ export class EVMOperatorValue extends EVMValue {
         exists(a);
         exists(b);
 
-        if (optimize && operator === "&&") {
-            const optimizedInstruction = createOptimizedAndInstruction([a, b]);
+        if (optimize && (operator === "&&" || operator === "&")) {
+            const optimizedInstruction = createOptimizedAndInstruction([a, b], operator === "&");
 
             // I have no idea right now how to handle the case where optimizedInstruction returns a non operator value
-            if (optimizedInstruction instanceof EVMOperatorValue && optimizedInstruction.operator === "&&") {
+            if (optimizedInstruction instanceof EVMOperatorValue && optimizedInstruction.operator === operator) {
                 super(optimizedInstruction, EVMValueTypes.EVMVALUE);
                 this._a = optimizedInstruction.a;
                 this._b = optimizedInstruction.b;
