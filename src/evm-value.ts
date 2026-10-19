@@ -179,6 +179,7 @@ const reversedOperator = {
     ">=": "<=",
     "<=": ">=",
     "==": "==",
+    "!=": "!=",
 } as const;
 
 function buildLogicInstruction(instructions: EVMValue[], operator: ValidOperator): EVMValue {
@@ -258,7 +259,8 @@ function buildLogicInstruction(instructions: EVMValue[], operator: ValidOperator
                                 }
 
                                 isImpossible = true;
-                            }
+                            },
+                            // - prevA > b && currA != b
                         },
                         ">=": {
                             // prevA >= b && currA > b
@@ -281,6 +283,7 @@ function buildLogicInstruction(instructions: EVMValue[], operator: ValidOperator
 
                                 isImpossible = true;
                             }
+                            // - prevA >= b && currA != b
                         },
                         "<": {
                             // prevA < b && currA < b
@@ -303,6 +306,7 @@ function buildLogicInstruction(instructions: EVMValue[], operator: ValidOperator
 
                                 isImpossible = true;
                             }
+                            // - prevA < b && currA != b
                         },
                         "<=": {
                             // prevA <= b && currA < b
@@ -325,6 +329,7 @@ function buildLogicInstruction(instructions: EVMValue[], operator: ValidOperator
 
                                 isImpossible = true;
                             }
+                            // - prevA <= b && currA != b
                         },
                         "==": {
                             // prevA == b && currA > b
@@ -367,6 +372,28 @@ function buildLogicInstruction(instructions: EVMValue[], operator: ValidOperator
 
                                 isImpossible = true;
                             },
+                            // - prevA == b && currA != b
+                            "!=": () => {
+                                if (currA.value != prevA.value) {
+                                    return false;
+                                }
+
+                                isImpossible = false;
+                            }
+                        },
+                        "!=": {
+                            // - prevA != b && currA < b
+                            // - prevA != b && currA > b
+                            // - prevA != b && currA >= b
+                            // - prevA != b && currA <= b
+                            // prevA != b && currA == b
+                            "==": () => {
+                                if (currA.value != prevA.value) {
+                                    return true;
+                                }
+
+                                isImpossible = false;
+                            }
                         }
                     } as const;
 
