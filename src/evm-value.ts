@@ -160,14 +160,21 @@ function multiOperatorsLogic<T extends string>(operators: T[], logic: (operator:
     }])) as unknown as Record<T, OperatorLogicValueType>
 }
 
-function flatAndConditions(instruction: EVMValue, binary: boolean): EVMValue[] {
-    if (instruction instanceof EVMOperatorValue && instruction.operator === (binary ? "&" : "&&")) {
-        return [...flatAndConditions(instruction.a, binary), ...flatAndConditions(instruction.b, binary)]
+function flatLogicInstruction(instruction: EVMValue, operator: ValidOperator): EVMValue[] {
+    if (instruction instanceof EVMOperatorValue && instruction.operator === operator) {
+        return [...flatLogicInstruction(instruction.a, operator), ...flatLogicInstruction(instruction.b, operator)]
     }
     return [instruction];
 }
 
-function buildAndInstruction(instructions: EVMValue[], binary: boolean): EVMValue {
+const reversedOperator = {
+    ">": "<",
+    "<": ">",
+    ">=": "<=",
+    "<=": ">=",
+} as const;
+
+function buildLogicInstruction(instructions: EVMValue[], operator: ValidOperator): EVMValue {
     const seen: Set<string> = new Set();
     let value: EVMValue | undefined;
 
@@ -180,12 +187,108 @@ function buildAndInstruction(instructions: EVMValue[], binary: boolean): EVMValu
 
         seen.add(desc);
 
+        if (instruction instanceof EVMOperatorValue && (instruction.a.valueType === EVMValueTypes.NUMBER || instruction.b.valueType === EVMValueTypes.NUMBER)) {
+            const nonNumericDesc = instruction.a.valueType === EVMValueTypes.NUMBER ? instruction.b.description : instruction.a.description;
+
+            const normalizedInstructions = ([instruction, ...instructions].filter(inst =>
+                inst instanceof EVMOperatorValue
+                && inst.operator in reversedOperator
+                && (
+                    (inst.a.valueType === EVMValueTypes.NUMBER && inst.b.description === nonNumericDesc)
+                    || (inst.b.valueType === EVMValueTypes.NUMBER && inst.a.description === nonNumericDesc)
+                )
+            ) as EVMOperatorValue[]).map(inst => {
+                const instOperator = inst.operator;
+
+                const reversed = reversedOperator[instOperator as keyof typeof reversedOperator];
+
+                return inst.a.valueType === EVMValueTypes.NUMBER ?
+                    {
+                        normalized: inst,
+                        original: inst,
+                    } :
+                    {
+                        normalized: new EVMOperatorValue(reversed, inst.b, inst.a, false),
+                        original: inst,
+                    };
+            });
+
+            if (normalizedInstructions.length) {
+                const reducedInstruction = normalizedInstructions.reduce((
+                    { original: oPrev, normalized: nPrev },
+                    { original: oCurr, normalized: nCurr }
+                ) => {
+                    const { operator: prevOperator, a: prevA } = nPrev;
+                    const { operator: currOperator, a: currA } = nCurr;
+
+                    // true for curr, false for prev
+                    const logicMap = {
+                        ">": {
+                            // prevA > b && currA > b
+                            ">": () => currA.value < prevA.value,
+                            // prevA > b && currA >= b
+                            ">=": () => currA.value < prevA.value,
+                        },
+                        ">=": {
+                            // prevA >= b && currA > b
+                            ">": () => currA.value <= prevA.value,
+                            // prevA >= b && currA >= b
+                            ">=": () => currA.value < prevA.value,
+                        },
+                        "<": {
+                            // prevA < b && currA < b
+                            "<": () => currA.value > prevA.value,
+                            // prevA < b && currA <= b
+                            "<=": () => currA.value > prevA.value,
+                        },
+                        "<=": {
+                            // prevA <= b && currA < b
+                            "<": () => currA.value >= prevA.value,
+                            // prevA <= b && currA <= b
+                            "<=": () => currA.value > prevA.value,
+                        }
+                    } as const;
+
+                    const func = (logicMap as any /* TODO fix fucking typescript */)[prevOperator][currOperator];
+
+                    if (!func) {
+                        return {
+                            original: oPrev,
+                            normalized: nPrev,
+                        };
+                    }
+
+                    seen.add(oCurr.description);
+
+                    if (func()) {
+                        return {
+                            original: oCurr,
+                            normalized: nCurr,
+                        };
+                    }
+
+                    return {
+                        original: oPrev,
+                        normalized: nPrev,
+                    };
+                });
+
+                if (!value) {
+                    value = reducedInstruction.original;
+                    continue;
+                }
+
+                value = new EVMOperatorValue(operator, value, reducedInstruction.original, false);
+                continue;
+            }
+        }
+
         if (!value) {
             value = instruction;
             continue;
         }
 
-        value = new EVMOperatorValue(binary ? "&" : "&&", value, instruction, false);
+        value = new EVMOperatorValue(operator, value, instruction, false);
     }
 
     exists(value);
@@ -193,9 +296,9 @@ function buildAndInstruction(instructions: EVMValue[], binary: boolean): EVMValu
     return value;
 }
 
-function createOptimizedAndInstruction(instructions: EVMValue[], binary: boolean): EVMValue {
-    const allFlattened = instructions.map(instruction => flatAndConditions(instruction, binary)).flat();
-    return buildAndInstruction(allFlattened, binary);
+function createOptimizedLogicInstruction(instructions: EVMValue[], operator: ValidOperator): EVMValue {
+    const allFlattened = instructions.map(instruction => flatLogicInstruction(instruction, operator)).flat();
+    return buildLogicInstruction(allFlattened, operator);
 }
 
 function formatOperatorDescription(operator: ValidOperator, a: EVMValue, b: EVMValue) {
@@ -265,8 +368,8 @@ export class EVMOperatorValue extends EVMValue {
         exists(a);
         exists(b);
 
-        if (optimize && (operator === "&&" || operator === "&")) {
-            const optimizedInstruction = createOptimizedAndInstruction([a, b], operator === "&");
+        if (optimize && ["&&", "&", "|"].includes(operator)) {
+            const optimizedInstruction = createOptimizedLogicInstruction([a, b], operator);
 
             // I have no idea right now how to handle the case where optimizedInstruction returns a non operator value
             if (optimizedInstruction instanceof EVMOperatorValue) {
