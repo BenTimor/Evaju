@@ -86,6 +86,10 @@ export class GenericOperatorParser implements IOpcodeParser {
                             stack.push(new EVMOperatorValue("<=", nonZero.a, nonZero.b));
                             return false;
                         }
+                        if (nonZero.operator === "==") {
+                            stack.push(new EVMOperatorValue("!=", nonZero.a, nonZero.b));
+                            return false;
+                        }
                     }
                 }
                 break;

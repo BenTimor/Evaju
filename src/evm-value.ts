@@ -141,6 +141,7 @@ export const validOperators = [
     ">=",
     "<=",
     "**",
+    "!=",
 ] as const;
 
 export type ValidOperator = typeof validOperators[number];
@@ -177,6 +178,7 @@ const reversedOperator = {
     "<": ">",
     ">=": "<=",
     "<=": ">=",
+    "==": "==",
 } as const;
 
 function buildLogicInstruction(instructions: EVMValue[], operator: ValidOperator): EVMValue {
@@ -248,6 +250,14 @@ function buildLogicInstruction(instructions: EVMValue[], operator: ValidOperator
                             "<=": () => {
                                 isImpossible = currA.value >= prevA.value;
                             },
+                            // prevA > b && currA == b
+                            "==": () => {
+                                if (prevA.value > currA.value) {
+                                    return true;
+                                }
+
+                                isImpossible = true;
+                            }
                         },
                         ">=": {
                             // prevA >= b && currA > b
@@ -262,6 +272,14 @@ function buildLogicInstruction(instructions: EVMValue[], operator: ValidOperator
                             "<=": () => {
                                 isImpossible = currA.value > prevA.value;
                             },
+                            // prevA >= b && currA == b
+                            "==": () => {
+                                if (prevA.value >= currA.value) {
+                                    return true;
+                                }
+
+                                isImpossible = true;
+                            }
                         },
                         "<": {
                             // prevA < b && currA < b
@@ -276,6 +294,14 @@ function buildLogicInstruction(instructions: EVMValue[], operator: ValidOperator
                             ">=": () => {
                                 isImpossible = prevA.value >= currA.value;
                             },
+                            // prevA < b && currA == b
+                            "==": () => {
+                                if (prevA.value < currA.value) {
+                                    return true;
+                                }
+
+                                isImpossible = true;
+                            }
                         },
                         "<=": {
                             // prevA <= b && currA < b
@@ -289,6 +315,56 @@ function buildLogicInstruction(instructions: EVMValue[], operator: ValidOperator
                             // prevA <= b && currA >= b (= prevA <= b <= currA)
                             ">=": () => {
                                 isImpossible = prevA.value > currA.value;
+                            },
+                            // prevA <= b && currA == b
+                            "==": () => {
+                                if (prevA.value <= currA.value) {
+                                    return true;
+                                }
+
+                                isImpossible = true;
+                            }
+                        },
+                        "==": {
+                            // prevA == b && currA > b
+                            ">": () => {
+                                if (currA.value > prevA.value) {
+                                    return false;
+                                }
+
+                                isImpossible = true;
+                            },
+                            // prevA == b && currA < b
+                            "<": () => {
+                                if (currA.value < prevA.value) {
+                                    return false;
+                                }
+
+                                isImpossible = true;
+                            },
+                            // prevA == b && currA >= b
+                            ">=": () => {
+                                if (currA.value >= prevA.value) {
+                                    return false;
+                                }
+
+                                isImpossible = true;
+                            },
+                            // prevA == b && currA <= b
+                            "<=": () => {
+                                if (currA.value <= prevA.value) {
+                                    return false;
+                                }
+
+                                isImpossible = true;
+                            },
+                            // prevA == b && currA == b
+                            "==": () => {
+                                if (currA.value === prevA.value) {
+                                    return false;
+                                }
+
+                                isImpossible = true;
                             },
                         }
                     } as const;
@@ -352,7 +428,7 @@ function createOptimizedLogicInstruction(instructions: EVMValue[], operator: Val
 }
 
 function formatOperatorDescription(operator: ValidOperator, a: EVMValue, b: EVMValue) {
-    if (["&&", "&", "|"].includes(operator)) {
+    if (["&&", "&"].includes(operator)) {
         const flattenedA = flatLogicInstruction(a, operator);
         const flattenedB = flatLogicInstruction(b, operator);
 
@@ -363,11 +439,13 @@ function formatOperatorDescription(operator: ValidOperator, a: EVMValue, b: EVMV
 }
 
 const validOperatorsLogic: Record<ValidOperator, OperatorLogicValueType> = {
-    ...multiOperatorsLogic(["&&", "**", "/", "&", "|", "||", "+", "-", "*", "==", ">", "<", ">=", "<="], (operator, a, b) => {
+    ...multiOperatorsLogic(["!=", "&&", "**", "/", "&", "|", "||", "+", "-", "*", "==", ">", "<", ">=", "<="], (operator, a, b) => {
         assertBigInt(a.value);
         assertBigInt(b.value);
 
         switch (operator) {
+            case "!=":
+                return a.value != b.value;
             case "&&":
                 return a.value && b.value;
             case "||":
@@ -424,7 +502,7 @@ export class EVMOperatorValue extends EVMValue {
         exists(a);
         exists(b);
 
-        if (optimize && ["&&", "&", "|"].includes(operator)) {
+        if (optimize && ["&&", "&"].includes(operator)) {
             const optimizedInstruction = createOptimizedLogicInstruction([a, b], operator);
 
             // I have no idea right now how to handle the case where optimizedInstruction returns a non operator value
