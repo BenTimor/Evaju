@@ -296,6 +296,12 @@ function createOptimizedLogicInstruction(instructions: EVMValue[], operator: Val
 }
 
 function formatOperatorDescription(operator: ValidOperator, a: EVMValue, b: EVMValue) {
+    if (["&&", "&", "|"].includes(operator)) {
+        const flattenedA = flatLogicInstruction(a, operator);
+        const flattenedB = flatLogicInstruction(b, operator);
+
+        return `(${[...flattenedA, ...flattenedB].map(f => f.description).join(` ${operator} `)})`;
+    }
     return `(${a.description} ${operator} ${b.description})`;
     // return `(\n${shiftMultilineText(a.description)}\n${shiftMultilineText(operator)}\n${shiftMultilineText(b.description)}\n)`;
 }
