@@ -1,5 +1,5 @@
 import { ComputedNumber, EVMValue, EVMValueTypes } from "../evm-value";
-import { exists } from "../type-utils";
+import { assertBigInt, exists } from "../type-utils";
 import { IOpcodeParser, OpcodeParserParentContext } from "./base";
 
 export class MLOADParser implements IOpcodeParser {
@@ -8,7 +8,12 @@ export class MLOADParser implements IOpcodeParser {
 
         exists(offset);
 
-        stack.push(memory[offset.key] ?? new EVMValue(0, EVMValueTypes.NUMBER));
+        const computed = new ComputedNumber((mem) => {
+            assertBigInt(mem.value);
+            return mem.value;
+        }, [memory[offset.key]]);
+
+        stack.push(new EVMValue(computed, EVMValueTypes.COMPUTED_NUMBER, `[MEMORY[${offset.description}]]`));
 
         return false;
     }
