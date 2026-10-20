@@ -21,11 +21,13 @@ import { LOGParser } from "./LOG"
 import { MLOADParser } from "./MLOAD"
 import { MSTOREParser } from "./MSTORE"
 import { NOTParser } from "./NOT"
+import { ORIGINParser } from "./ORIGIN"
 import { POPParser } from "./POP"
 import { PUSHParser } from "./PUSH"
 import { RETURNParser } from "./RETURN"
 import { RETURNDATASIZEParser } from "./RETURNDATASIZE"
 import { REVERTParser } from "./REVERT"
+import { SELFBALANCEParser } from "./SELFBALANCE"
 import { SLOADParser } from "./SLOAD"
 import { SSTOREParser } from "./SSTORE"
 import { STATICCALLParser } from "./STATICCALL"
@@ -103,4 +105,6 @@ export const opcodeParsers: Record<string, IOpcodeParser> = {
     EXTCODECOPY: new EXTCODESIZEParser(),
     CREATE2: new CREATE2Parser(),
     BYTE: new BYTEParser(),
+    ORIGIN: new ORIGINParser(),
+    SELFBALANCE: new SELFBALANCEParser(),
 }
