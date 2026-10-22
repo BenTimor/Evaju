@@ -3,7 +3,7 @@ import { assertBigInt } from "../type-utils";
 import { IOpcodeParser, OpcodeParserParentContext } from "./base";
 
 export class NOTParser implements IOpcodeParser {
-    parse(args: string[], { stack }: OpcodeParserParentContext): boolean {
+    parse({ stack }: OpcodeParserParentContext): boolean {
         const a = stack.pop();
 
         const computed = new ComputedNumber(a => {
@@ -12,7 +12,7 @@ export class NOTParser implements IOpcodeParser {
             return ~a.value;
         }, [a])
 
-        stack.push(new EVMValue(computed, EVMValueTypes.COMPUTED_NUMBER, `~${a?.description}`));
+        stack.push(new EVMValue(computed, EVMValueTypes.COMPUTED_NUMBER, `~${a}`));
 
         return false;
     }

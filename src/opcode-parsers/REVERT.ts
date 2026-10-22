@@ -5,7 +5,7 @@ import { sliceOffset } from "../utils";
 import { IOpcodeParser, OpcodeParserParentContext } from "./base";
 
 export class REVERTParser implements IOpcodeParser {
-    parse(args: string[], { stack, memory, codeBuilder }: OpcodeParserParentContext): boolean {
+    parse({ stack, memory, codeBuilder }: OpcodeParserParentContext): boolean {
         const offset = stack.pop();
         const size = stack.pop();
 

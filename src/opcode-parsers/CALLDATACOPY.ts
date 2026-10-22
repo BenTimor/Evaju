@@ -4,7 +4,7 @@ import { sliceOffset, unknownBaseStringToNumber } from "../utils";
 import type { IOpcodeParser, OpcodeParserParentContext } from "./base";
 
 export class CALLDATACOPYParser implements IOpcodeParser {
-    parse(args: string[], { stack, memory, config }: OpcodeParserParentContext): boolean {
+    parse({ stack, memory, config }: OpcodeParserParentContext): boolean {
         const dataOffset = stack.pop();
         const offset = stack.pop();
         const size = stack.pop();
@@ -26,7 +26,7 @@ export class CALLDATACOPYParser implements IOpcodeParser {
             );
         }, [offset, size, config.calldata]);
 
-        memory[dataOffset.key] = new EVMValue(computed, EVMValueTypes.COMPUTED_NUMBER, `[Calldata[${offset.description}:${size.description}]]`);
+        memory[`${dataOffset}`] = new EVMValue(computed, EVMValueTypes.COMPUTED_NUMBER, `[Calldata[${offset}:${size}]]`);
 
         return false;
     }

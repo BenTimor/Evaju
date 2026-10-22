@@ -4,7 +4,7 @@ import { assertBigInt, exists } from "../type-utils";
 import { IOpcodeParser, OpcodeParserParentContext } from "./base";
 
 export class EXTCODECOPYParser implements IOpcodeParser {
-    parse(args: string[], { memory, stack, config }: OpcodeParserParentContext): boolean {
+    parse({ memory, stack, config }: OpcodeParserParentContext): boolean {
         const address = stack.pop();
         const dataOffset = stack.pop();
         const offset = stack.pop();
@@ -21,7 +21,7 @@ export class EXTCODECOPYParser implements IOpcodeParser {
             return hexToBigInt(sliceHex(toHex(code.value), Number(offset.value), Number(offset.value) + Number(size.value)));
         }, [address, offset, size, config.codes?.[Number(address.value)]]);
 
-        memory[dataOffset.key] = new EVMValue(computed, EVMValueTypes.COMPUTED_NUMBER, `[EXTCODECOPY(${address.description})]`);
+        memory[`${dataOffset}`] = new EVMValue(computed, EVMValueTypes.COMPUTED_NUMBER, `[EXTCODECOPY(${address})]`);
 
         return false;
     }

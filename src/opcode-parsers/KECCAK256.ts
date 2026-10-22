@@ -4,14 +4,14 @@ import { assertBigInt, exists } from "../type-utils";
 import { IOpcodeParser, OpcodeParserParentContext } from "./base";
 
 export class KECCAK256Parser implements IOpcodeParser {
-    parse(args: string[], { stack, memory }: OpcodeParserParentContext): boolean {
+    parse({ stack, memory }: OpcodeParserParentContext): boolean {
         const offset = stack.pop();
         const size = stack.pop();
 
         exists(offset);
         exists(size);
         
-        const mValue = memory[offset.key] ?? new EVMValue(0, EVMValueTypes.NUMBER);
+        const mValue = memory[`${offset}`] ?? new EVMValue(0, EVMValueTypes.NUMBER);
     
         const computed = new ComputedNumber(mValue => {
             assertBigInt(mValue.value);
@@ -19,7 +19,7 @@ export class KECCAK256Parser implements IOpcodeParser {
             return hexToBigInt(keccak256(numberToHex(mValue.value, { size: 32 })));
         }, [mValue]);
 
-        stack.push(new EVMValue(computed, EVMValueTypes.COMPUTED_NUMBER, `[KECCAK256(${mValue.description})]`));
+        stack.push(new EVMValue(computed, EVMValueTypes.COMPUTED_NUMBER, `[KECCAK256(${mValue})]`));
 
         return false;
     }

@@ -3,7 +3,7 @@ import { assertBigInt } from "../type-utils";
 import { IOpcodeParser, OpcodeParserParentContext } from "./base";
 
 export class BYTEParser implements IOpcodeParser {
-    parse(args: string[], { stack }: OpcodeParserParentContext): boolean {
+    parse({ stack }: OpcodeParserParentContext): boolean {
         const i = stack.pop();
         const x = stack.pop();
 
@@ -14,7 +14,7 @@ export class BYTEParser implements IOpcodeParser {
             return "0x" + x.value.toString(16).slice(Number(x.value) * 2, Number(x.value) * 2 + 2);
         }, [i, x]);
 
-        stack.push(new EVMValue(computed, EVMValueTypes.COMPUTED_NUMBER, `[BYTE at ${i?.description} of ${x?.description}]`));
+        stack.push(new EVMValue(computed, EVMValueTypes.COMPUTED_NUMBER, `[BYTE at ${i} of ${x}]`));
 
         return false;
     }

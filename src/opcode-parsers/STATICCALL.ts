@@ -4,7 +4,7 @@ import { everyExists } from "../type-utils";
 import { IOpcodeParser, OpcodeParserParentContext } from "./base";
 
 export class STATICCALLParser implements IOpcodeParser {
-    parse(_args: string[], { stack, codeBuilder }: OpcodeParserParentContext): boolean {
+    parse({ stack, codeBuilder }: OpcodeParserParentContext): boolean {
         const gas = stack.pop();
         const address = stack.pop();
         const argsOffset = stack.pop();
@@ -14,10 +14,10 @@ export class STATICCALLParser implements IOpcodeParser {
 
         everyExists([gas, address, argsOffset, argsSize, retOffset, retSize]);
 
-        codeBuilder.push(new CustomInstruction(`// Static call to ${address?.description}`));
+        codeBuilder.push(new CustomInstruction(`// Static call to ${address}`));
 
         const computed = new ComputedNumber((_) => 0, [undefined]);
-        stack.push(new EVMValue(computed, EVMValueTypes.COMPUTED_NUMBER, `[SUCCESS_FOR_STATIC_CALL(${address?.description})]`));
+        stack.push(new EVMValue(computed, EVMValueTypes.COMPUTED_NUMBER, `[SUCCESS_FOR_STATIC_CALL(${address})]`));
 
         return false;
     }

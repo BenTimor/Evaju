@@ -4,7 +4,7 @@ import { IOpcodeParser, OpcodeParserParentContext } from "./base";
 export class DUPParser implements IOpcodeParser {
     constructor(private position: number) {}
 
-    parse(args: string[], { stack, codeBuilder }: OpcodeParserParentContext): boolean {
+    parse({ stack, codeBuilder }: OpcodeParserParentContext): boolean {
         const value = stack[stack.length - this.position];
 
         if (!value) {

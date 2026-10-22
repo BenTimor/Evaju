@@ -4,7 +4,7 @@ import { everyExists } from "../type-utils";
 import { IOpcodeParser, OpcodeParserParentContext } from "./base";
 
 export class CALLParser implements IOpcodeParser {
-    parse(_args: string[], { stack, codeBuilder }: OpcodeParserParentContext): boolean {
+    parse({ stack, codeBuilder }: OpcodeParserParentContext): boolean {
         const gas = stack.pop();
         const address = stack.pop();
         const value = stack.pop();
@@ -15,10 +15,10 @@ export class CALLParser implements IOpcodeParser {
 
         everyExists([gas, address, value, argsOffset, argsSize, retOffset, retSize]);
 
-        codeBuilder.push(new CustomInstruction(`// Call to ${address?.description} with value of ${value?.description} and gas of ${gas?.description}`));
+        codeBuilder.push(new CustomInstruction(`// Call to ${address} with value of ${value} and gas of ${gas}`));
 
         const computed = new ComputedNumber((_) => 0, [undefined]);
-        stack.push(new EVMValue(computed, EVMValueTypes.COMPUTED_NUMBER, `[SUCCESS_FOR_CALL(${address?.description})]`));
+        stack.push(new EVMValue(computed, EVMValueTypes.COMPUTED_NUMBER, `[SUCCESS_FOR_CALL(${address})]`));
 
         return false;
     }

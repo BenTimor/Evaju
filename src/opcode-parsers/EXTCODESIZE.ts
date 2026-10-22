@@ -3,7 +3,7 @@ import { assertBigInt, exists } from "../type-utils";
 import { IOpcodeParser, OpcodeParserParentContext } from "./base";
 
 export class EXTCODESIZEParser implements IOpcodeParser {
-    parse(_args: string[], { stack, config }: OpcodeParserParentContext): boolean {
+    parse({ stack, config }: OpcodeParserParentContext): boolean {
         const addr = stack.pop();
         exists(addr);
 
@@ -13,7 +13,7 @@ export class EXTCODESIZEParser implements IOpcodeParser {
             return size.value;
         }, [addr, config.codeSizes?.[Number(addr.value)]]);
 
-        stack.push(new EVMValue(computed, EVMValueTypes.COMPUTED_NUMBER, `[EXTCODESIZE(${addr.description})]`));
+        stack.push(new EVMValue(computed, EVMValueTypes.COMPUTED_NUMBER, `[EXTCODESIZE(${addr})]`));
 
         return false;
     }

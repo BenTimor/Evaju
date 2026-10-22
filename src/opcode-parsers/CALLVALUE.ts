@@ -3,7 +3,7 @@ import { assertBigInt } from "../type-utils";
 import { IOpcodeParser, OpcodeParserParentContext } from "./base";
 
 export class CALLVALUEParser implements IOpcodeParser {
-    parse(_args: string[], { stack, config }: OpcodeParserParentContext): boolean {
+    parse({ stack, config }: OpcodeParserParentContext): boolean {
         const computed = new ComputedNumber((value) => {
             assertBigInt(value.value);
 

@@ -36,9 +36,11 @@ function parseOpcode(opcode: string, offset: number = 0, stack: EVMValue[] = [],
 
         const parser: IOpcodeParser | undefined = opcodeParsers[instruction];
 
+
         if (parser) {
-            const done = parser.parse(args, {
+            const done = parser.parse({
                 currentOffset,
+                args,
                 line,
                 lines,
                 linesByOffset,
@@ -71,7 +73,7 @@ function parseOpcode(opcode: string, offset: number = 0, stack: EVMValue[] = [],
 
 async function main() {
     await OpcodeCSV.init();
-    
+
     const opcodeExample = (await readFile("easy.opcode")).toString().replaceAll("(Unknown Opcode)", "").replaceAll("'", "");
     console.log("Starting to parse");
     const parsedCode = parseOpcode(opcodeExample);

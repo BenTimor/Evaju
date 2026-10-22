@@ -7,7 +7,7 @@ import type { IOpcodeParser, OpcodeParserParentContext } from "./base";
 export class JUMPParser implements IOpcodeParser {
     constructor(private jumpi: boolean) { }
 
-    parse(_args: string[], {
+    parse({
         opcode,
         stack,
         linesByOffset,
@@ -38,7 +38,7 @@ export class JUMPParser implements IOpcodeParser {
                 }
             }
             else {
-                return [new CustomInstruction(`// JUMP to ${counter.description}`)];
+                return [new CustomInstruction(`// JUMP to ${counter}`)];
             }
         };
 

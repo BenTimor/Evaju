@@ -5,7 +5,7 @@ import { IOpcodeParser, OpcodeParserParentContext } from "./base";
 export class GenericOperatorParser implements IOpcodeParser {
     constructor(private operator: ValidOperator) { }
 
-    parse(_args: string[], { stack }: OpcodeParserParentContext): boolean {
+    parse({ stack }: OpcodeParserParentContext): boolean {
         const a = stack.pop();
         const b = stack.pop();
 
@@ -14,32 +14,32 @@ export class GenericOperatorParser implements IOpcodeParser {
 
         switch (this.operator) {
             case "&&":
-                if (a.description === b.description) {
+                if (a.toString() === b.toString()) {
                     stack.push(a);
                     return false;
                 }
                 break;
             case "&":
-                if (a.description === b.description) {
+                if (a.toString() === b.toString()) {
                     stack.push(a);
                     return false;
                 }
 
                 if (a.value === 1461501637330902918203684832716283019655932542975n && b.valueType !== EVMValueTypes.NUMBER) {
-                    if (b.description.startsWith("[ADDRESS(")) {
+                    if (b.toString().startsWith("[ADDRESS(")) {
                         stack.push(b);
                         return false;
                     }
-                    stack.push(new EVMValue(`[ADDRESS(${b.description})]`, EVMValueTypes.CUSTOM));
+                    stack.push(new EVMValue(`[ADDRESS(${b})]`, EVMValueTypes.CUSTOM));
                     return false;
                 }
 
                 if (b.value === 1461501637330902918203684832716283019655932542975n && a.valueType !== EVMValueTypes.NUMBER) {
-                    if (a.description.startsWith("[ADDRESS(")) {
+                    if (a.toString().startsWith("[ADDRESS(")) {
                         stack.push(a);
                         return false;
                     }
-                    stack.push(new EVMValue(`[ADDRESS(${a.description})]`, EVMValueTypes.CUSTOM));
+                    stack.push(new EVMValue(`[ADDRESS(${a})]`, EVMValueTypes.CUSTOM));
                     return false;
                 }
                 break;

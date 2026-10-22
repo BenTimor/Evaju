@@ -5,7 +5,7 @@ import { IOpcodeParser, OpcodeParserParentContext } from "./base";
 export class SWAPParser implements IOpcodeParser {
     constructor(private offset: number) {}
 
-    parse(args: string[], { stack, codeBuilder }: OpcodeParserParentContext): boolean {
+    parse({ stack, codeBuilder }: OpcodeParserParentContext): boolean {
         const a = stack[stack.length - 1];
         const b = stack[stack.length - 1 - this.offset];
 

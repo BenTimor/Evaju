@@ -7,10 +7,10 @@ import { IOpcodeParser, OpcodeParserParentContext } from "./base";
 export class LOGParser implements IOpcodeParser {
     constructor(private topicsAmount: number) {}
     
-    parse(args: string[], { stack, memory, codeBuilder }: OpcodeParserParentContext): boolean {
+    parse({ stack, memory, codeBuilder }: OpcodeParserParentContext): boolean {
         const offset = stack.pop();
         const size = stack.pop();
-        const topics = new Array(this.topicsAmount).fill(0).map(() => stack.pop()?.description);
+        const topics = new Array(this.topicsAmount).fill(0).map(() => stack.pop());
 
         exists(offset);
         exists(size);

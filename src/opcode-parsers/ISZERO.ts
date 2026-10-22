@@ -7,8 +7,8 @@ export class ISZEROParser extends GenericOperatorParser {
         super("==");
     }
 
-    parse(_args: string[], context: OpcodeParserParentContext): boolean {
+    parse(context: OpcodeParserParentContext): boolean {
         context.stack.push(new EVMValue(0, EVMValueTypes.NUMBER));
-        return super.parse(_args, context);
+        return super.parse(context);
     }
 }

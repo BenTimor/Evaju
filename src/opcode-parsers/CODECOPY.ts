@@ -4,7 +4,7 @@ import { assertBigInt, exists } from "../type-utils";
 import { IOpcodeParser, OpcodeParserParentContext } from "./base";
 
 export class CODECOPYParser implements IOpcodeParser {
-    parse(_args: string[], { memory, stack, opcode, linesByOffset }: OpcodeParserParentContext): boolean {
+    parse({ memory, stack, opcode, linesByOffset }: OpcodeParserParentContext): boolean {
         const destOffset = stack.pop();
         const offset = stack.pop();
         const size = stack.pop();
@@ -23,7 +23,7 @@ export class CODECOPYParser implements IOpcodeParser {
             return "0x" + slicedBytecode + new Array(Number(size.value) * 2 - slicedBytecode.length).fill("0").join("");
         }, [offset, size])
 
-        memory[destOffset.key] = new EVMValue(computed, EVMValueTypes.COMPUTED_NUMBER, `[CODECOPY from offset ${offset.description} with size of ${size.description}]`)
+        memory[`${destOffset}`] = new EVMValue(computed, EVMValueTypes.COMPUTED_NUMBER, `[CODECOPY from offset ${offset} with size of ${size}]`)
 
         return false;
     }

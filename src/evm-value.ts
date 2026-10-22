@@ -47,7 +47,7 @@ export class EVMValue {
         if (val instanceof EVMValue) {
             this.numericValue = val.value;
             this.valType = val.valType;
-            this.descriptionValue = val.description;
+            this.descriptionValue = `${val}`;
             return;
         }
 
@@ -92,10 +92,10 @@ export class EVMValue {
 
     public clone() {
         if (this.valType === EVMValueTypes.CUSTOM) {
-            return new EVMValue(this.description, this.valueType);
+            return new EVMValue(this.toString(), this.valueType);
         }
         else if (this.value instanceof ComputedNumber) {
-            return new EVMValue(this.value, this.valueType, this.description);
+            return new EVMValue(this.value, this.valueType, this.toString());
         }
         else {
             return new EVMValue(this.valType, this.valType);
@@ -110,16 +110,7 @@ export class EVMValue {
         return this.valType;
     }
 
-    // TODO Get back to this function as I'm not sure it's the best way to handle it
-    get key() {
-        return JSON.stringify(this, (_, value) => {
-            if (value instanceof BigInt) {
-                return value.toString();
-            }
-        });
-    }
-
-    get description(): string {
+    toString(): string {
         return this.descriptionValue;
     }
 }
@@ -201,7 +192,7 @@ function buildAndInstruction(instructions: EVMValue[], operator: ValidOperator):
             && (instruction.a.value === 0n || instruction.b.value === 0n)
         ) {
             const nonZero = instruction.a.value === 0n ? instruction.b : instruction.a;
-            const nonZeroDesc = nonZero.description;
+            const nonZeroDesc = nonZero.toString();
 
             if (required.has(nonZeroDesc)) {
                 return new EVMOperatorValue("false");
@@ -210,18 +201,18 @@ function buildAndInstruction(instructions: EVMValue[], operator: ValidOperator):
             equalZero.add(nonZeroDesc);
         }
         else {
-            if (equalZero.has(instruction.description)) {
+            if (equalZero.has(instruction.toString())) {
                 return new EVMOperatorValue("false");
             }
 
-            required.add(instruction.description);
+            required.add(instruction.toString());
         }
     }
     
     const seen: Set<string> = new Set();
     // Operators / Seen
     for (const instruction of instructions) {
-        const desc = instruction.description;
+        const desc = instruction.toString();
 
         if (seen.has(desc)) {
             continue;
@@ -231,14 +222,14 @@ function buildAndInstruction(instructions: EVMValue[], operator: ValidOperator):
 
         if (instruction instanceof EVMOperatorValue && (instruction.a.valueType === EVMValueTypes.NUMBER || instruction.b.valueType === EVMValueTypes.NUMBER)) {
             const nonNumericInstruction = instruction.a.valueType === EVMValueTypes.NUMBER ? instruction.b : instruction.a;
-            const nonNumericDesc = nonNumericInstruction.description;
+            const nonNumericDesc = nonNumericInstruction.toString();
 
             const normalizedInstructions = ([instruction, ...instructions].filter(inst =>
                 inst instanceof EVMOperatorValue
                 && inst.operator in reversedOperator
                 && (
-                    (inst.a.valueType === EVMValueTypes.NUMBER && inst.b.description === nonNumericDesc)
-                    || (inst.b.valueType === EVMValueTypes.NUMBER && inst.a.description === nonNumericDesc)
+                    (inst.a.valueType === EVMValueTypes.NUMBER && inst.b.toString() === nonNumericDesc)
+                    || (inst.b.valueType === EVMValueTypes.NUMBER && inst.a.toString() === nonNumericDesc)
                 )
             ) as EVMOperatorValue[]).map(inst => {
                 const instOperator = inst.operator;
@@ -267,7 +258,7 @@ function buildAndInstruction(instructions: EVMValue[], operator: ValidOperator):
                     const { operator: currOperator, a: currA } = nCurr;
 
                     if (isImpossible) {
-                        seen.add(oCurr.description);
+                        seen.add(oCurr.toString());
                         return { original: oCurr, normalized: nCurr };
                     }
 
@@ -440,7 +431,7 @@ function buildAndInstruction(instructions: EVMValue[], operator: ValidOperator):
                         };
                     }
 
-                    seen.add(oCurr.description);
+                    seen.add(oCurr.toString());
 
                     if (func()) {
                         return {
@@ -494,10 +485,10 @@ function formatOperatorDescription(operator: ValidOperator, a: EVMValue, b: EVMV
         const flattenedA = flatLogicInstruction(a, operator);
         const flattenedB = flatLogicInstruction(b, operator);
 
-        return `(${[...flattenedA, ...flattenedB].map(f => f.description).join(` ${operator} `)})`;
+        return `(${[...flattenedA, ...flattenedB].map(f => f.toString()).join(` ${operator} `)})`;
     }
-    return `(${a.description} ${operator} ${b.description})`;
-    // return `(\n${shiftMultilineText(a.description)}\n${shiftMultilineText(operator)}\n${shiftMultilineText(b.description)}\n)`;
+    return `(${a} ${operator} ${b})`;
+    // return `(\n${shiftMultilineText(a.toString())}\n${shiftMultilineText(operator)}\n${shiftMultilineText(b.toString())}\n)`;
 }
 
 const validOperatorsLogic: Record<ValidOperator, OperatorLogicValueType> = {
