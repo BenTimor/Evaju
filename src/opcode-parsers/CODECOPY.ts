@@ -4,7 +4,7 @@ import { assertBigInt, exists } from "../type-utils";
 import { IOpcodeParser, OpcodeParserParentContext } from "./base";
 
 export class CODECOPYParser implements IOpcodeParser {
-    parse({ memory, stack, opcode, linesByOffset }: OpcodeParserParentContext): boolean {
+    parse({ memory, stack, opcode }: OpcodeParserParentContext): boolean {
         const destOffset = stack.pop();
         const offset = stack.pop();
         const size = stack.pop();

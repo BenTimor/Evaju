@@ -1,5 +1,6 @@
 import { ADDRESSParser } from "./ADDRESS"
 import type { IOpcodeParser } from "./base"
+import { BLOCKHASHParser } from "./BLOCKHASH"
 import { BYTEParser } from "./BYTE"
 import { CALLParser } from "./CALL"
 import { CALLDATACOPYParser } from "./CALLDATACOPY"
@@ -21,6 +22,7 @@ import { LOGParser } from "./LOG"
 import { MLOADParser } from "./MLOAD"
 import { MSTOREParser } from "./MSTORE"
 import { NOTParser } from "./NOT"
+import { NUMBERParser } from "./NUMBER"
 import { ORIGINParser } from "./ORIGIN"
 import { POPParser } from "./POP"
 import { PUSHParser } from "./PUSH"
@@ -62,6 +64,7 @@ export const opcodeParsers: Record<string, IOpcodeParser> = {
     ),
     // Generic operators
     LT: new GenericOperatorParser("<"),
+    SLT: new GenericOperatorParser("<"), // TODO Handle signed
     SHR: new GenericOperatorParser(">>"),
     SHL: new GenericOperatorParser("<<"),
     GT: new GenericOperatorParser(">"),
@@ -73,6 +76,7 @@ export const opcodeParsers: Record<string, IOpcodeParser> = {
     OR: new GenericOperatorParser("|"),
     DIV: new GenericOperatorParser("/"),
     EXP: new GenericOperatorParser("**"),
+    MOD: new GenericOperatorParser("%"),
     // Rest
     CALLDATASIZE: new CALLDATASIZEParser(),
     JUMP: new JUMPParser(false),
@@ -107,4 +111,6 @@ export const opcodeParsers: Record<string, IOpcodeParser> = {
     BYTE: new BYTEParser(),
     ORIGIN: new ORIGINParser(),
     SELFBALANCE: new SELFBALANCEParser(),
+    NUMBER: new NUMBERParser(),
+    BLOCKHASH: new BLOCKHASHParser(),
 }

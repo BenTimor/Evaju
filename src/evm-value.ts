@@ -117,6 +117,7 @@ export class EVMValue {
 
 export const validOperators = [
     "&&",
+    "%",
     "&",
     "|",
     "||",
@@ -492,11 +493,13 @@ function formatOperatorDescription(operator: ValidOperator, a: EVMValue, b: EVMV
 }
 
 const validOperatorsLogic: Record<ValidOperator, OperatorLogicValueType> = {
-    ...multiOperatorsLogic(["!=", "&&", "**", "/", "&", "|", "||", "+", "-", "*", "==", ">", "<", ">=", "<=", "false"], (operator, a, b) => {
+    ...multiOperatorsLogic(["%", "!=", "&&", "**", "/", "&", "|", "||", "+", "-", "*", "==", ">", "<", ">=", "<=", "false"], (operator, a, b) => {
         assertBigInt(a.value);
         assertBigInt(b.value);
 
         switch (operator) {
+            case "%":
+                return a.value % b.value; 
             case "!=":
                 return a.value != b.value;
             case "&&":
