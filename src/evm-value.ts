@@ -1,4 +1,4 @@
-import { MAX_UINT256 } from "./constants";
+import { MAX_UINT256, SELECTOR_DESCRIPTION } from "./constants";
 import { assertBigInt, everyExists, exists } from "./type-utils";
 import { normalizeUint256, toHex, toSignedUint256, unknownBaseStringToNumber } from "./utils";
 
@@ -504,7 +504,41 @@ function createOptimizedLogicInstruction(instructions: EVMValue[], operator: Val
     return buildAndInstruction(allFlattened, operator);
 }
 
+/** True for `calldataload(0)`, the word the selector is taken from. */
+function isCalldataSelectorWord(value: EVMValue): boolean {
+    return value.valueType === EVMValueTypes.CUSTOM && value.toString() === "[Calldata[0x00]]";
+}
+
+/**
+ * Recognises the selector extraction prologue:
+ * `calldataload(0) >> 0xe0` (newer compilers) and `calldataload(0) / 2**224`
+ * (older ones) both yield the 4 byte function selector.
+ */
+function describeSelector(operator: ValidOperator, a: EVMValue, b: EVMValue): string | undefined {
+    if (!isCalldataSelectorWord(a)) {
+        return undefined;
+    }
+
+    const amount = b.knownNumber;
+
+    if (operator === ">>" && amount === 224n) {
+        return SELECTOR_DESCRIPTION;
+    }
+
+    if (operator === "/" && amount === (1n << 224n)) {
+        return SELECTOR_DESCRIPTION;
+    }
+
+    return undefined;
+}
+
 function formatOperatorDescription(operator: ValidOperator, a: EVMValue, b: EVMValue): string {
+    const selector = describeSelector(operator, a, b);
+
+    if (selector !== undefined) {
+        return selector;
+    }
+
     if (["&&", "&"].includes(operator)) {
         const flattenedA = flatLogicInstruction(a, operator);
         const flattenedB = flatLogicInstruction(b, operator);

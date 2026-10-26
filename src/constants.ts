@@ -18,3 +18,9 @@ export const ADDRESS_MASK = (1n << 160n) - 1n;
 
 /** Default maximum recursive depth used while following jumps. */
 export const DEFAULT_MAX_DEPTH = 100;
+
+/**
+ * Description used for the 4 byte function selector (`calldataload(0)` shifted
+ * down by 224 bits). Also used to recognise dispatch comparisons.
+ */
+export const SELECTOR_DESCRIPTION = "msg.sig";

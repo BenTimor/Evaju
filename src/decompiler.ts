@@ -32,6 +32,8 @@ export type DecompileOptions = {
 export type DecompiledFunction = {
     label: string,
     offset: number,
+    /** Dispatcher selector, when the function is an external entry point. */
+    selector?: bigint,
     /** True when the body returns to its caller instead of halting. */
     returns: boolean,
     /** Net stack change caused by the call (returned values minus arguments). */
@@ -82,9 +84,14 @@ type WalkState = {
     frameExtents: Map<number, number>,
     /** Discovery pass: every unconditional jump target and its call sites. */
     jumpTargets?: Map<number, JumpTargetState>,
+    /** Discovery pass: dispatcher targets mapped to their selector. */
+    selectorTargets?: Map<number, bigint>,
+    /** Discovery pass: call sites of dispatcher targets. */
+    selectorSites?: Map<number, Set<number>>,
     /** Second pass: targets that should become functions, with their call sites. */
     extractTargets?: Set<number>,
     extractSites?: Map<number, Set<number>>,
+    extractSelectors?: Map<number, bigint>,
     functions?: Map<number, DecompiledFunction>,
     /** Functions that were actually referenced by a call. */
     usedFunctions?: Set<number>,
@@ -125,7 +132,11 @@ function createState(source: string, options: DecompileOptions, extraction: bool
                 functionsInProgress: new Set<number>(),
                 functionStack: [] as FunctionParse[],
             }
-            : { jumpTargets: new Map<number, JumpTargetState>() }),
+            : {
+                jumpTargets: new Map<number, JumpTargetState>(),
+                selectorTargets: new Map<number, bigint>(),
+                selectorSites: new Map<number, Set<number>>(),
+            }),
     };
 }
 
@@ -146,7 +157,11 @@ function cacheKey(offset: number, stack: EVMValue[], memory: EVMMemory, storage:
     ].join("\u0002");
 }
 
-function functionLabel(offset: number): string {
+function functionLabel(offset: number, selector?: bigint): string {
+    if (selector !== undefined) {
+        return `function_${selector.toString(16).padStart(8, "0")}`;
+    }
+
     return `function_${offset.toString(16)}`;
 }
 
@@ -161,6 +176,7 @@ function functionLabel(offset: number): string {
 function parseFunctionBody(state: WalkState, jump: JumpSite, depth: number): DecompiledFunction {
     const entryStack = [...jump.stack];
     const sites = state.extractSites?.get(jump.target) ?? new Set<number>();
+    const selector = state.extractSelectors?.get(jump.target);
     const parse: FunctionParse = {
         offset: jump.target,
         entrySize: entryStack.length,
@@ -174,8 +190,9 @@ function parseFunctionBody(state: WalkState, jump: JumpSite, depth: number): Dec
         const body = walk(state, jump.target, entryStack, jump.memory.clone(), { ...jump.storage }, new Set(), depth + 1);
         const returns = parse.returnStack !== undefined;
         const fn: DecompiledFunction = {
-            label: functionLabel(jump.target),
+            label: functionLabel(jump.target, selector),
             offset: jump.target,
+            ...(selector === undefined ? {} : { selector }),
             returns,
             stackDelta: returns ? parse.returnStack!.length - parse.entrySize : 0,
             body,
@@ -224,12 +241,10 @@ function isTrivialBody(fn: DecompiledFunction): boolean {
 }
 
 function emitFunctionCall(state: WalkState, jump: JumpSite, visitedOffset: Set<number>, depth: number): AbstractInstruction[] {
-    const label = functionLabel(jump.target);
-
     if (state.functionsInProgress!.has(jump.target)) {
         // Recursive call: reference the function instead of expanding it again.
         state.usedFunctions!.add(jump.target);
-        return [new FunctionCallInstruction(label)];
+        return [new FunctionCallInstruction(functionLabel(jump.target, state.extractSelectors?.get(jump.target)))];
     }
 
     const fn = state.functions!.get(jump.target) ?? parseFunctionBody(state, jump, depth);
@@ -298,13 +313,36 @@ function recordJumpTarget(state: WalkState, target: number, site: number): void 
     }
 }
 
+/** Records a `msg.sig == 0x...` dispatch target. */
+function recordSelectorTarget(state: WalkState, target: number, selector: bigint, site: number): void {
+    if (state.selectorTargets === undefined) {
+        return;
+    }
+
+    if (!state.selectorTargets.has(target)) {
+        state.selectorTargets.set(target, selector);
+    }
+
+    let sites = state.selectorSites!.get(target);
+
+    if (sites === undefined) {
+        sites = new Set<number>();
+        state.selectorSites!.set(target, sites);
+    }
+
+    sites.add(site);
+}
+
 /**
- * Targets that are reached from more than one jump site and are not loops.
- * Functions that are called once stay inlined, which keeps dispatch readable.
+ * Targets that deserve a named function:
+ *  - dispatcher entries (`msg.sig == ...`), which are external functions, and
+ *  - any other target that is reached from more than one jump site.
+ * Other targets stay inlined, which keeps small local control flow readable.
  */
-function computeExtractTargets(state: WalkState): { targets: Set<number>, sites: Map<number, Set<number>> } {
+function computeExtractTargets(state: WalkState): { targets: Set<number>, sites: Map<number, Set<number>>, selectors: Map<number, bigint> } {
     const targets = new Set<number>();
     const sites = new Map<number, Set<number>>();
+    const selectors = new Map<number, bigint>();
 
     for (const [offset, info] of state.jumpTargets ?? []) {
         if (offset === 0 || info.disqualified || info.sites.size < 2) {
@@ -315,7 +353,24 @@ function computeExtractTargets(state: WalkState): { targets: Set<number>, sites:
         sites.set(offset, info.sites);
     }
 
-    return { targets, sites };
+    for (const [offset, selector] of state.selectorTargets ?? []) {
+        if (offset === 0) {
+            continue;
+        }
+
+        targets.add(offset);
+        selectors.set(offset, selector);
+
+        const merged = sites.get(offset) ?? new Set<number>();
+
+        for (const site of state.selectorSites?.get(offset) ?? []) {
+            merged.add(site);
+        }
+
+        sites.set(offset, merged);
+    }
+
+    return { targets, sites, selectors };
 }
 
 function walk(
@@ -360,6 +415,10 @@ function walk(
     const onJumpParsed = state.jumpTargets === undefined
         ? undefined
         : (target: number, site: number) => recordJumpTarget(state, target, site);
+
+    const onSelectorDispatch = state.selectorTargets === undefined
+        ? undefined
+        : (target: number, selector: bigint, site: number) => recordSelectorTarget(state, target, selector, site);
 
     const functionStack = state.functionStack;
     const currentFunction = functionStack === undefined ? undefined : functionStack[functionStack.length - 1];
@@ -422,6 +481,7 @@ function walk(
                     config: state.context,
                     ...(onJumpTarget === undefined ? {} : { onJumpTarget }),
                     ...(onJumpParsed === undefined ? {} : { onJumpParsed }),
+                    ...(onSelectorDispatch === undefined ? {} : { onSelectorDispatch }),
                     ...(onReturn === undefined ? {} : { onReturn }),
                     ...(currentFunction === undefined ? {} : { returnTargets: currentFunction.returnTargets }),
                 });
@@ -469,9 +529,12 @@ function renderProgram(instructions: AbstractInstruction[], functions: Decompile
 
     for (const fn of functions) {
         const body = stringifyBody(fn.body);
+        const details = fn.selector === undefined
+            ? `offset 0x${fn.offset.toString(16)}`
+            : `selector 0x${fn.selector.toString(16).padStart(8, "0")}, offset 0x${fn.offset.toString(16)}`;
 
         parts.push([
-            `// --- ${fn.label} (offset 0x${fn.offset.toString(16)}) ---`,
+            `// --- ${fn.label} (${details}) ---`,
             `${fn.label}() {`,
             shiftMultilineText(body.length > 0 ? body : "// (no instructions)"),
             "}",
@@ -532,6 +595,7 @@ export function decompileWithReport(source: string, options: DecompileOptions = 
 
         state.extractTargets = extraction.targets;
         state.extractSites = extraction.sites;
+        state.extractSelectors = extraction.selectors;
     }
 
     const instructions = walk(state, 0, [], new EVMMemory(), {}, new Set(), 0);

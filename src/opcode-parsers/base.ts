@@ -57,6 +57,8 @@ export type OpcodeParserParentContext = {
     onReturn?: (stack: EVMValue[]) => void,
     /** Offsets that are return labels of the function currently being parsed. */
     returnTargets?: Set<number>,
+    /** Called when a conditional jump compares msg.sig against a selector. */
+    onSelectorDispatch?: (target: number, selector: bigint, site: number) => void,
 }
 
 export interface IOpcodeParser {

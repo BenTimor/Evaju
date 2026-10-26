@@ -1,4 +1,5 @@
 import { AbstractInstruction, CustomInstruction, IfStatementInstruction } from "../code-builder";
+import { SELECTOR_DESCRIPTION } from "../constants";
 import { EVMOperatorValue, EVMValue } from "../evm-value";
 import { exists } from "../type-utils";
 import { getInstructionFromLine, lineBytes, toSafeNumber, type LinesByOffset } from "../utils";
@@ -39,6 +40,36 @@ function isReturnTarget(destination: EVMValue, returnTargets: Set<number> | unde
     return offset !== undefined && returnTargets.has(offset);
 }
 
+/**
+ * Recognises `msg.sig == 0x<selector>` and returns the selector. The selector
+ * expression itself is rendered as `msg.sig` by `EVMOperatorValue`.
+ */
+function selectorOfComparison(condition: EVMValue): bigint | undefined {
+    if (!(condition instanceof EVMOperatorValue) || condition.operator !== "==") {
+        return undefined;
+    }
+
+    const sides = [
+        [condition.a, condition.b],
+        [condition.b, condition.a],
+    ] as const;
+
+    for (const [value, selector] of sides) {
+        // The selector expression is symbolic, so its description is the marker.
+        if (selector.knownNumber !== undefined || selector.toString() !== SELECTOR_DESCRIPTION) {
+            continue;
+        }
+
+        const selectorValue = value.knownNumber;
+
+        if (selectorValue !== undefined && selectorValue <= 0xffffffffn) {
+            return selectorValue;
+        }
+    }
+
+    return undefined;
+}
+
 export class JUMPParser implements IOpcodeParser {
     constructor(private jumpi: boolean) { }
 
@@ -55,10 +86,13 @@ export class JUMPParser implements IOpcodeParser {
         onJumpTarget,
         onJumpParsed,
         onReturn,
+        onSelectorDispatch,
         returnTargets,
     }: OpcodeParserParentContext): boolean {
         const destination = stack.pop();
         exists(destination);
+
+        const target = resolveJumpTarget(destination, linesByOffset);
 
         // Jumping to a call site's continuation ends an extracted function body.
         if (!this.jumpi && isReturnTarget(destination, returnTargets)) {
@@ -67,10 +101,24 @@ export class JUMPParser implements IOpcodeParser {
             return true;
         }
 
-        /** Parses the body the jump leads to, or explains why it cannot be followed. */
-        const jumpBody = (): AbstractInstruction[] => {
-            const target = resolveJumpTarget(destination, linesByOffset);
+        /** A call replaces the jump when the target was extracted into a function. */
+        const replaceJump = (): AbstractInstruction[] | undefined => {
+            if (target === undefined) {
+                return undefined;
+            }
 
+            return onJumpTarget?.({
+                target,
+                site: currentOffset,
+                stack: [...stack],
+                memory,
+                storage,
+                jumpBytes: lineBytes(line),
+            });
+        };
+
+        /** Parses the body the jump leads to, or explains why it cannot be followed. */
+        const inlineJump = (): AbstractInstruction[] => {
             if (target !== undefined) {
                 return parentCallback(opcode, target, [...stack], memory.clone(), { ...storage });
             }
@@ -81,24 +129,14 @@ export class JUMPParser implements IOpcodeParser {
         };
 
         if (!this.jumpi) {
-            const target = resolveJumpTarget(destination, linesByOffset);
-            const replacement = target === undefined
-                ? undefined
-                : onJumpTarget?.({
-                    target,
-                    site: currentOffset,
-                    stack: [...stack],
-                    memory,
-                    storage,
-                    jumpBytes: lineBytes(line),
-                });
+            const replacement = replaceJump();
 
             if (replacement !== undefined) {
                 codeBuilder.push(...replacement);
                 return true;
             }
 
-            const body = jumpBody();
+            const body = inlineJump();
 
             if (target !== undefined) {
                 onJumpParsed?.(target, currentOffset);
@@ -111,11 +149,19 @@ export class JUMPParser implements IOpcodeParser {
         const condition = stack.pop();
         exists(condition);
 
+        if (target !== undefined) {
+            const selector = selectorOfComparison(condition);
+
+            if (selector !== undefined) {
+                onSelectorDispatch?.(target, selector, currentOffset);
+            }
+        }
+
         const knownCondition = condition.knownNumber;
 
         if (knownCondition !== undefined) {
             if (knownCondition !== 0n) {
-                codeBuilder.push(...jumpBody());
+                codeBuilder.push(...inlineJump());
                 return true;
             }
 
@@ -123,7 +169,7 @@ export class JUMPParser implements IOpcodeParser {
             return false;
         }
 
-        const ifBody = jumpBody();
+        const ifBody = replaceJump() ?? inlineJump();
         const elseBody = parentCallback(opcode, currentOffset + lineBytes(line), [...stack], memory.clone(), { ...storage });
 
         if (ifBody[0] instanceof IfStatementInstruction) {

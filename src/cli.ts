@@ -23,7 +23,7 @@ Options:
       --max-depth <n>      Maximum nested jump depth (default: 100)
       --opcodes <file>     Use a custom opcodes.csv
       --no-cache           Disable jump-target memoization
-      --no-functions       Inline shared code instead of extracting functions
+      --no-functions       Inline shared code and entry points
       --json               Print the report as JSON
   -h, --help               Show this help
   -v, --version            Show the version
@@ -254,6 +254,9 @@ async function main(argv = process.argv.slice(2)): Promise<number> {
             functions: report.functions.map(fn => ({
                 label: fn.label,
                 offset: fn.offset,
+                ...(fn.selector === undefined
+                    ? {}
+                    : { selector: `0x${fn.selector.toString(16).padStart(8, "0")}` }),
                 returns: fn.returns,
                 stackDelta: fn.stackDelta,
             })),

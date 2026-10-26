@@ -26,4 +26,4 @@ export {
     toSignedUint256,
     unknownBaseStringToNumber,
 } from "./utils";
-export { MAX_UINT256, ADDRESS_MASK, DEFAULT_MAX_DEPTH, WORD_BYTES } from "./constants";
+export { MAX_UINT256, ADDRESS_MASK, DEFAULT_MAX_DEPTH, SELECTOR_DESCRIPTION, WORD_BYTES } from "./constants";
