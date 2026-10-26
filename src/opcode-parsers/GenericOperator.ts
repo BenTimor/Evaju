@@ -1,81 +1,81 @@
+import { ADDRESS_MASK } from "../constants";
 import { EVMOperatorValue, EVMValue, EVMValueTypes, ValidOperator } from "../evm-value";
 import { exists } from "../type-utils";
 import { IOpcodeParser, OpcodeParserParentContext } from "./base";
+
+/** Operators where the EVM pops the shift amount first and the value second. */
+const SHIFT_OPERATORS: ValidOperator[] = ["<<", ">>", "sar"];
 
 export class GenericOperatorParser implements IOpcodeParser {
     constructor(private operator: ValidOperator) { }
 
     parse({ stack }: OpcodeParserParentContext): boolean {
-        const a = stack.pop();
-        const b = stack.pop();
+        const first = stack.pop();
+        const second = stack.pop();
 
-        exists(a);
-        exists(b);
+        exists(first);
+        exists(second);
+
+        // EVM pops `shift` before the shifted value, but `(value << shift)` is the
+        // readable (and correct) order, so normalize it here.
+        const [a, b] = SHIFT_OPERATORS.includes(this.operator) ? [second, first] : [first, second];
 
         switch (this.operator) {
             case "&&":
-                if (a.toString() === b.toString()) {
-                    stack.push(a);
-                    return false;
-                }
-                break;
-            case "&":
+            case "&": {
                 if (a.toString() === b.toString()) {
                     stack.push(a);
                     return false;
                 }
 
-                if (a.value === 1461501637330902918203684832716283019655932542975n && b.valueType !== EVMValueTypes.NUMBER) {
-                    if (b.toString().startsWith("[ADDRESS(")) {
-                        stack.push(b);
+                if (this.operator === "&") {
+                    // `x & 0xffff...ff` (the 160 bit address mask) is an address cast.
+                    if (a.knownNumber === ADDRESS_MASK && b.valueType !== EVMValueTypes.NUMBER) {
+                        stack.push(asAddress(b));
                         return false;
                     }
-                    stack.push(new EVMValue(`[ADDRESS(${b})]`, EVMValueTypes.CUSTOM));
-                    return false;
+
+                    if (b.knownNumber === ADDRESS_MASK && a.valueType !== EVMValueTypes.NUMBER) {
+                        stack.push(asAddress(a));
+                        return false;
+                    }
                 }
 
-                if (b.value === 1461501637330902918203684832716283019655932542975n && a.valueType !== EVMValueTypes.NUMBER) {
-                    if (a.toString().startsWith("[ADDRESS(")) {
-                        stack.push(a);
-                        return false;
-                    }
-                    stack.push(new EVMValue(`[ADDRESS(${a})]`, EVMValueTypes.CUSTOM));
-                    return false;
-                }
                 break;
+            }
             case "+":
-                if (a.value === 0n) {
+                if (a.isZero) {
                     stack.push(b.clone());
                     return false;
                 }
-                if (b.value === 0n) {
+                if (b.isZero) {
                     stack.push(a.clone());
                     return false;
                 }
                 break;
             case "-":
-                if (b.value === 0n) {
+                if (b.isZero) {
                     stack.push(a.clone());
                     return false;
                 }
                 break;
             case "*":
-                if (a.value === 0n || b.value === 0n) {
+                if (a.isZero || b.isZero) {
                     stack.push(new EVMValue(0, EVMValueTypes.NUMBER));
                     return false;
                 }
-                if (a.value === 1n) {
+                if (a.knownNumber === 1n) {
                     stack.push(b.clone());
                     return false;
                 }
-                if (b.value === 1n) {
+                if (b.knownNumber === 1n) {
                     stack.push(a.clone());
                     return false;
                 }
                 break;
             case "==":
-                if (a.value === 0n || b.value === 0n) {
-                    const nonZero = a.value === 0n ? b : a;
+                if (a.isZero || b.isZero) {
+                    const nonZero = a.isZero ? b : a;
 
                     if (nonZero instanceof EVMOperatorValue) {
                         if (nonZero.operator === "<") {
@@ -101,4 +101,12 @@ export class GenericOperatorParser implements IOpcodeParser {
 
         return false;
     }
+}
+
+function asAddress(value: EVMValue): EVMValue {
+    const description = value.toString();
+
+    return description.startsWith("[ADDRESS(")
+        ? value
+        : new EVMValue(`[ADDRESS(${description})]`, EVMValueTypes.CUSTOM);
 }

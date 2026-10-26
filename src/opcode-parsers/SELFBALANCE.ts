@@ -1,5 +1,5 @@
 import { EVMValue, EVMValueTypes } from "../evm-value";
-import { IOpcodeParser, OpcodeParserParentContext } from "./base";
+import type { IOpcodeParser, OpcodeParserParentContext } from "./base";
 
 export class SELFBALANCEParser implements IOpcodeParser {
     parse({ stack }: OpcodeParserParentContext): boolean {

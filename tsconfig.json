@@ -44,5 +44,8 @@
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "experimentalDecorators": true
-  }
+  },
+
+  // Only the library/CLI sources are part of the build.
+  "include": ["src"]
 }

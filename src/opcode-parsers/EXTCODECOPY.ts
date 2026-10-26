@@ -1,27 +1,29 @@
-import { hexToBigInt, sliceHex, toHex } from "viem";
-import { ComputedNumber, EVMValue, EVMValueTypes } from "../evm-value";
-import { assertBigInt, exists } from "../type-utils";
-import { IOpcodeParser, OpcodeParserParentContext } from "./base";
+import type { IOpcodeParser, OpcodeParserParentContext } from "./base";
+import { exists } from "../type-utils";
+import { readHexBytes, toHex, toSafeNumber } from "../utils";
+import { knownOrSymbolic } from "./helpers";
 
 export class EXTCODECOPYParser implements IOpcodeParser {
     parse({ memory, stack, config }: OpcodeParserParentContext): boolean {
         const address = stack.pop();
-        const dataOffset = stack.pop();
+        const destination = stack.pop();
         const offset = stack.pop();
         const size = stack.pop();
 
         exists(address);
-        exists(dataOffset);
+        exists(destination);
+        exists(offset);
+        exists(size);
 
-        const computed = new ComputedNumber((address, offset, size, code) => {
-            assertBigInt(code.value);
-            assertBigInt(offset.value);
-            assertBigInt(size.value);
+        const addressNumber = address.knownNumber;
+        const code = addressNumber === undefined ? undefined : config.codes?.[toHex(addressNumber)];
+        const offsetNumber = offset.knownNumber;
+        const sizeNumber = toSafeNumber(size.knownNumber ?? -1n);
+        const value = code !== undefined && offsetNumber !== undefined && sizeNumber !== undefined
+            ? readHexBytes(code, toSafeNumber(offsetNumber) ?? Number.MAX_SAFE_INTEGER, sizeNumber)
+            : undefined;
 
-            return hexToBigInt(sliceHex(toHex(code.value), Number(offset.value), Number(offset.value) + Number(size.value)));
-        }, [address, offset, size, config.codes?.[Number(address.value)]]);
-
-        memory[`${dataOffset}`] = new EVMValue(computed, EVMValueTypes.COMPUTED_NUMBER, `[EXTCODECOPY(${address})]`);
+        memory[`${destination}`] = knownOrSymbolic(value, `[EXTCODECOPY(${address}, ${offset}, ${size})]`);
 
         return false;
     }

@@ -1,18 +1,7 @@
-import { randomInt } from "crypto";
-import { CustomInstruction } from "../code-builder";
-import { EVMValue, EVMValueTypes } from "../evm-value";
-import { IOpcodeParser, OpcodeParserParentContext } from "./base";
+import { CREATEParser } from "./CREATE";
 
-export class CREATE2Parser implements IOpcodeParser {
-    parse({ stack, codeBuilder }: OpcodeParserParentContext): boolean {
-        const value = stack.pop();
-        const offset = stack.pop();
-        const size = stack.pop();
-        const salt = stack.pop();
-
-        codeBuilder.push(new CustomInstruction(`// CREATE2 with offset ${offset} size ${size} and value ${value}`));
-        stack.push(new EVMValue(randomInt(10000), EVMValueTypes.NUMBER)); // TODO Rethink because it'll be hard to debug.
-
-        return false;
+export class CREATE2Parser extends CREATEParser {
+    constructor() {
+        super(true);
     }
 }

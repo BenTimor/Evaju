@@ -1,19 +1,18 @@
-import { ComputedNumber, EVMValue, EVMValueTypes } from "../evm-value";
-import { assertBigInt, exists } from "../type-utils";
-import { IOpcodeParser, OpcodeParserParentContext } from "./base";
+import type { IOpcodeParser, OpcodeParserParentContext } from "./base";
+import { exists } from "../type-utils";
+import { hexByteLength, toHex } from "../utils";
+import { knownOrSymbolic } from "./helpers";
 
 export class EXTCODESIZEParser implements IOpcodeParser {
     parse({ stack, config }: OpcodeParserParentContext): boolean {
-        const addr = stack.pop();
-        exists(addr);
+        const address = stack.pop();
+        exists(address);
 
-        const computed = new ComputedNumber((_, size) => {
-            assertBigInt(size.value);
+        const addressNumber = address.knownNumber;
+        const code = addressNumber === undefined ? undefined : config.codes?.[toHex(addressNumber)];
+        const size = code === undefined ? undefined : BigInt(hexByteLength(code));
 
-            return size.value;
-        }, [addr, config.codeSizes?.[Number(addr.value)]]);
-
-        stack.push(new EVMValue(computed, EVMValueTypes.COMPUTED_NUMBER, `[EXTCODESIZE(${addr})]`));
+        stack.push(knownOrSymbolic(size, `[EXTCODESIZE(${address})]`));
 
         return false;
     }

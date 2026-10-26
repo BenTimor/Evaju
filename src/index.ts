@@ -1,85 +1,26 @@
-import { readFile, writeFile } from "node:fs/promises";
-import { EVMValue } from "./evm-value";
-import { calculateLinesByOffset, getInstructionFromLine, lineBytes } from "./utils";
-import { opcodeParsers, type IOpcodeParser } from "./opcode-parsers";
-import { OpcodeCSV } from "./opcodes";
-import { AbstractInstruction, CustomInstruction } from "./code-builder";
-
-const config = {}
-
-function parseOpcode(opcode: string, offset: number = 0, stack: EVMValue[] = [], memory: Record<string, EVMValue> = {}, storage: Record<string, EVMValue> = {}, unknownInstructions: Set<string> = new Set(), visitedOffset: Set<number> = new Set(), depth: number = 0): AbstractInstruction[] {
-    const lines = opcode.split("\n");
-    const linesByOffset = calculateLinesByOffset(lines);
-    const codeBuilder: AbstractInstruction[] = [];
-
-    if (depth === 50) {
-        return [new CustomInstruction("// Depth too big")];
-    }
-
-    const startLineDetails = linesByOffset[offset];
-
-    if (!startLineDetails) {
-        throw new Error(`Offset ${offset} passed into parseOpcode is invalid`);
-    }
-
-    let currentOffset = offset;
-
-    for (const line of lines.slice(startLineDetails.lineNumber)) {
-        if (visitedOffset.has(currentOffset)) {
-            return [new CustomInstruction(`// Recursion - Trying to call ${currentOffset} which equals to line number ${linesByOffset[currentOffset]?.lineNumber} with the code ${linesByOffset[currentOffset]?.line}`)];
-        }
-
-        visitedOffset.add(currentOffset);
-
-        const instruction = getInstructionFromLine(line);
-        const args = line.split(" ").slice(1);
-
-        const parser: IOpcodeParser | undefined = opcodeParsers[instruction];
-
-
-        if (parser) {
-            const done = parser.parse({
-                currentOffset,
-                args,
-                line,
-                lines,
-                linesByOffset,
-                memory,
-                storage,
-                opcode,
-                originalOffset: offset,
-                stack,
-                codeBuilder,
-                parentCallback: (...args) => parseOpcode(...args, unknownInstructions, new Set(visitedOffset), depth + 1),
-                config,
-            });
-
-            if (done) {
-                break;
-            }
-
-            currentOffset += lineBytes(line);
-        }
-        else {
-            if (!unknownInstructions.has(instruction)) {
-                console.warn(`Unknown instruction ${instruction}. Ignoring and continuing.`);
-                unknownInstructions.add(instruction);
-            }
-        }
-    }
-
-    return codeBuilder;
-}
-
-async function main() {
-    await OpcodeCSV.init();
-
-    const opcodeExample = (await readFile("easy.opcode")).toString().replaceAll("(Unknown Opcode)", "").replaceAll("'", "");
-    console.log("Starting to parse");
-    const parsedCode = parseOpcode(opcodeExample);
-    console.log("Code parsed. Writing to file.");
-    await writeFile("output.evaju", parsedCode.join("\n"));
-    console.log("Done");
-}
-
-main();
+export { decompile, decompileWithReport, parseOpcode } from "./decompiler";
+export type { DecompileOptions, DecompileReport } from "./decompiler";
+export { EVMOperatorValue, EVMValue, EVMValueTypes, ComputedNumber, validOperators } from "./evm-value";
+export type { ConvertableValueTypes, ValidOperator } from "./evm-value";
+export { AbstractInstruction, CustomInstruction, IfStatementInstruction } from "./code-builder";
+export { OpcodeCSV, defaultOpcodeCsvPath } from "./opcodes";
+export type { OpcodeCSVLine } from "./opcodes";
+export { getOpcodeParser, isKnownInstruction, opcodeNames } from "./opcode-parsers";
+export type { ExecutionContext, IOpcodeParser, OpcodeParserParentContext } from "./opcode-parsers";
+export {
+    calculateLinesByOffset,
+    getInstructionArgs,
+    getInstructionFromLine,
+    hexByteLength,
+    lineBytes,
+    normalizeDisassembly,
+    normalizeUint256,
+    readHexBytes,
+    sliceBytes,
+    stripHexPrefix,
+    toHex,
+    toSafeNumber,
+    toSignedUint256,
+    unknownBaseStringToNumber,
+} from "./utils";
+export { MAX_UINT256, ADDRESS_MASK, DEFAULT_MAX_DEPTH, WORD_BYTES } from "./constants";

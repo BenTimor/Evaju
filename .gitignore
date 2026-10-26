@@ -1,4 +1,8 @@
 dist
 node_modules
+coverage
 *.opcode
 *.evaju
+
+# Versioned examples, despite the *.opcode rule above.
+!examples/*.opcode

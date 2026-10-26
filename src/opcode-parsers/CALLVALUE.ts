@@ -1,16 +1,9 @@
-import { ComputedNumber, EVMValue, EVMValueTypes } from "../evm-value";
-import { assertBigInt } from "../type-utils";
-import { IOpcodeParser, OpcodeParserParentContext } from "./base";
+import type { IOpcodeParser, OpcodeParserParentContext } from "./base";
+import { knownOrSymbolic } from "./helpers";
 
 export class CALLVALUEParser implements IOpcodeParser {
     parse({ stack, config }: OpcodeParserParentContext): boolean {
-        const computed = new ComputedNumber((value) => {
-            assertBigInt(value.value);
-
-            return value.value;
-        }, [config.value])
-
-        stack.push(new EVMValue(computed, EVMValueTypes.COMPUTED_NUMBER, "[VALUE]"));
+        stack.push(knownOrSymbolic(config.value, "[VALUE]"));
 
         return false;
     }

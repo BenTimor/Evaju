@@ -1,19 +1,19 @@
-import { ComputedNumber, EVMValue, EVMValueTypes } from "../evm-value";
+import { EVMValue, EVMValueTypes } from "../evm-value";
+import type { IOpcodeParser, OpcodeParserParentContext } from "./base";
 import { exists } from "../type-utils";
-import { IOpcodeParser, OpcodeParserParentContext } from "./base";
 
 export class RETURNDATACOPYParser implements IOpcodeParser {
     parse({ stack, memory }: OpcodeParserParentContext): boolean {
-        const dataOffset = stack.pop();
+        const destination = stack.pop();
         const offset = stack.pop();
         const size = stack.pop();
 
-        exists(dataOffset);
+        exists(destination);
+        exists(offset);
+        exists(size);
 
-        // TODO We need to think about it.
-        const computed = new ComputedNumber((_) => 0, [undefined]);
-
-        memory[`${dataOffset}`] = new EVMValue(computed, EVMValueTypes.COMPUTED_NUMBER, `[RETURNDATACOPY[${offset}:${size}]]`);
+        // The callee is not executed, so the copied bytes stay symbolic.
+        memory[`${destination}`] = new EVMValue(`[RETURNDATACOPY(${offset}, ${size})]`, EVMValueTypes.CUSTOM);
 
         return false;
     }

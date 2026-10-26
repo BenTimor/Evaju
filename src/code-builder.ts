@@ -20,38 +20,93 @@ export class CustomInstruction extends AbstractInstruction {
     }
 }
 
+/** Joins a branch body, dropping the empty entries produced by no-op instructions. */
+export function stringifyBody(body: AbstractInstruction[]): string {
+    return body
+        .map(instruction => instruction.stringifyInstruction())
+        .filter(text => text.trim().length > 0)
+        .join("\n");
+}
+
 export class IfStatementInstruction extends AbstractInstruction {
+    /** Rendering is pure, so the text is worth caching: branch bodies are shared. */
+    private rendered: string | undefined;
+
     constructor(private _conditions: EVMValue[], private _bodies: AbstractInstruction[][]) {
         super();
     }
 
     public stringifyInstruction(): string {
-        const builder: string[] = [];
-
-        for (const bodyIndex in this._bodies) {
-            const body = this._bodies[bodyIndex];
-            const condition = this._conditions[bodyIndex];
-            exists(body);
-
-            if (condition) {
-                builder.push(`${+bodyIndex === 0 ? "if" : "else if"} ${condition} {`);
-                builder.push(shiftMultilineText(body.join("\n")));
-                builder.push(shiftMultilineText("// Stop program (by if)"));
-                builder.push("}");
-            }
-            else {
-                builder.push(body.join("\n"));
-            }
+        // Without this cache the renderer is exponential: a body that is reused by
+        // several branches would be expanded again for each of them.
+        if (this.rendered !== undefined) {
+            return this.rendered;
         }
 
-        return builder.join("\n");
+        const builder: string[] = [];
+        const seenConditions = new Set<string>();
+        let emittedBranches = 0;
+
+        for (let bodyIndex = 0; bodyIndex < this._bodies.length; bodyIndex++) {
+            const body = this._bodies[bodyIndex];
+            exists(body);
+
+            const condition = this._conditions[bodyIndex];
+
+            if (!condition) {
+                // The trailing body is the `else` branch. `else { if (...) ... }`
+                // reads much better as an `else if` chain, so inline it.
+                const nestedIf = body.length === 1 && body[0] instanceof IfStatementInstruction
+                    ? body[0].stringifyInstruction()
+                    : undefined;
+                const bodyText = nestedIf ?? stringifyBody(body);
+
+                if (bodyText.length > 0) {
+                    if (nestedIf !== undefined && nestedIf.startsWith("if ")) {
+                        builder.push(`else ${nestedIf}`);
+                    }
+                    else {
+                        builder.push("else {", shiftMultilineText(bodyText), "}");
+                    }
+                }
+
+                continue;
+            }
+
+            const conditionText = condition.toString();
+
+            // A branch that repeats an earlier condition can never be reached.
+            if (seenConditions.has(conditionText)) {
+                continue;
+            }
+
+            seenConditions.add(conditionText);
+
+            const bodyText = stringifyBody(body);
+
+            builder.push(`${emittedBranches === 0 ? "if" : "else if"} ${conditionText} {`);
+
+            if (bodyText.length > 0) {
+                builder.push(shiftMultilineText(bodyText));
+            }
+            else {
+                builder.push(shiftMultilineText("// (branch ends here)"));
+            }
+
+            builder.push("}");
+            emittedBranches++;
+        }
+
+        this.rendered = builder.join("\n");
+
+        return this.rendered;
     }
 
-    get conditions() {
+    get conditions(): EVMValue[] {
         return this._conditions;
     }
 
-    get bodies() {
+    get bodies(): AbstractInstruction[][] {
         return this._bodies;
     }
 
@@ -70,6 +125,6 @@ export class IfStatementInstruction extends AbstractInstruction {
     }
 
     public stringifiedBodyByIndex(index: number): string {
-        return this.bodyByIndex(index).join("\n");
+        return stringifyBody(this.bodyByIndex(index));
     }
 }

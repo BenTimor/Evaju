@@ -1,16 +1,9 @@
-import { ComputedNumber, EVMValue, EVMValueTypes } from "../evm-value";
-import { assertBigInt } from "../type-utils";
-import { IOpcodeParser, OpcodeParserParentContext } from "./base";
+import type { IOpcodeParser, OpcodeParserParentContext } from "./base";
+import { knownOrSymbolic } from "./helpers";
 
 export class GASParser implements IOpcodeParser {
     parse({ stack, config }: OpcodeParserParentContext): boolean {
-        const computed = new ComputedNumber(gas => {
-            assertBigInt(gas.value);
-
-            return gas.value;
-        }, [config.gas])
-
-        stack.push(new EVMValue(computed, EVMValueTypes.COMPUTED_NUMBER, "[GAS]"));
+        stack.push(knownOrSymbolic(config.gas, "[GAS]"));
 
         return false;
     }

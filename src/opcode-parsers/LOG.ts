@@ -1,12 +1,12 @@
 import { CustomInstruction } from "../code-builder";
-import { EVMValueTypes } from "../evm-value";
-import { assertBigInt, everyExists, exists } from "../type-utils";
-import { sliceOffset } from "../utils";
-import { IOpcodeParser, OpcodeParserParentContext } from "./base";
+import { exists, everyExists } from "../type-utils";
+import { toSafeNumber } from "../utils";
+import { memoryText } from "./helpers";
+import type { IOpcodeParser, OpcodeParserParentContext } from "./base";
 
 export class LOGParser implements IOpcodeParser {
-    constructor(private topicsAmount: number) {}
-    
+    constructor(private topicsAmount: number) { }
+
     parse({ stack, memory, codeBuilder }: OpcodeParserParentContext): boolean {
         const offset = stack.pop();
         const size = stack.pop();
@@ -16,16 +16,19 @@ export class LOGParser implements IOpcodeParser {
         exists(size);
         everyExists(topics);
 
-        const valueInMemory = memory[Number(offset.value)];
-        
-        if (valueInMemory?.valueType !== EVMValueTypes.NUMBER) {
-            codeBuilder.push(new CustomInstruction(`// [LOG] Mem: Unknown | Topics: ${topics.join(", ")}`));
+        const offsetNumber = offset.knownNumber;
+        const sizeNumber = toSafeNumber(size.knownNumber ?? -1n, 32n);
+        const data = offsetNumber === undefined || sizeNumber === undefined
+            ? undefined
+            : memoryText(memory, offsetNumber, BigInt(sizeNumber));
+        const topicsText = topics.length === 0 ? "none" : topics.join(", ");
+
+        if (data === undefined) {
+            codeBuilder.push(new CustomInstruction(`// [LOG${this.topicsAmount}] Mem: Unknown | Topics: ${topicsText}`));
             return false;
         }
-        
-        assertBigInt(valueInMemory.value);
 
-        codeBuilder.push(new CustomInstruction(`// [LOG] Mem: ${sliceOffset(valueInMemory.value, Number(size.value))} | Topics: ${topics.join(", ")}`));
+        codeBuilder.push(new CustomInstruction(`// [LOG${this.topicsAmount}] Mem: ${data} | Topics: ${topicsText}`));
 
         return false;
     }

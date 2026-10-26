@@ -1,8 +1,8 @@
 import { CustomInstruction } from "../code-builder";
-import { EVMValueTypes } from "../evm-value";
-import { assertBigInt, exists } from "../type-utils";
-import { sliceOffset } from "../utils";
-import { IOpcodeParser, OpcodeParserParentContext } from "./base";
+import { exists } from "../type-utils";
+import { toSafeNumber } from "../utils";
+import { memoryText } from "./helpers";
+import type { IOpcodeParser, OpcodeParserParentContext } from "./base";
 
 export class RETURNParser implements IOpcodeParser {
     parse({ stack, memory, codeBuilder }: OpcodeParserParentContext): boolean {
@@ -12,16 +12,18 @@ export class RETURNParser implements IOpcodeParser {
         exists(offset);
         exists(size);
 
-        const valueInMemory = memory[Number(offset.value)];
+        const offsetNumber = offset.knownNumber;
+        const sizeNumber = toSafeNumber(size.knownNumber ?? -1n);
+        const data = offsetNumber === undefined || sizeNumber === undefined
+            ? undefined
+            : memoryText(memory, offsetNumber, BigInt(sizeNumber));
 
-        if (valueInMemory?.valueType !== EVMValueTypes.NUMBER) {
-            codeBuilder.push(new CustomInstruction(`// [REVERT] Return: Unknown`));
+        if (data === undefined) {
+            codeBuilder.push(new CustomInstruction("// [RETURN] Return: Unknown"));
             return true;
         }
 
-        assertBigInt(valueInMemory.value);
-
-        codeBuilder.push(new CustomInstruction(`// [RETURN] Return: ${sliceOffset(valueInMemory.value, Number(size.value))}`));
+        codeBuilder.push(new CustomInstruction(`// [RETURN] Return: ${data}`));
 
         return true;
     }

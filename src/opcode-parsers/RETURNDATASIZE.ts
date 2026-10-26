@@ -1,12 +1,10 @@
-import { ComputedNumber, EVMValue, EVMValueTypes } from "../evm-value";
-import { IOpcodeParser, OpcodeParserParentContext } from "./base";
+import { EVMValue, EVMValueTypes } from "../evm-value";
+import type { IOpcodeParser, OpcodeParserParentContext } from "./base";
 
 export class RETURNDATASIZEParser implements IOpcodeParser {
     parse({ stack }: OpcodeParserParentContext): boolean {
-        const computed = new ComputedNumber((_) => 0, [undefined]);
-
-        // TODO We need to think about it.
-        stack.push(new EVMValue(computed, EVMValueTypes.COMPUTED_NUMBER, `[RETURNDATASIZE]`));
+        // The size depends on the callee we do not execute, so it stays symbolic.
+        stack.push(new EVMValue("[RETURNDATASIZE]", EVMValueTypes.CUSTOM));
 
         return false;
     }

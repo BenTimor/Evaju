@@ -1,4 +1,4 @@
-import { IOpcodeParser, OpcodeParserParentContext } from "./base";
+import type { IOpcodeParser, OpcodeParserParentContext } from "./base";
 
 export class JUMPDESTParser implements IOpcodeParser {
     parse(_context: OpcodeParserParentContext): boolean {
