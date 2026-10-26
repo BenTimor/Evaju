@@ -1,7 +1,6 @@
 import { CustomInstruction } from "../code-builder";
 import { exists, everyExists } from "../type-utils";
 import { toSafeNumber } from "../utils";
-import { memoryText } from "./helpers";
 import type { IOpcodeParser, OpcodeParserParentContext } from "./base";
 
 export class LOGParser implements IOpcodeParser {
@@ -16,19 +15,16 @@ export class LOGParser implements IOpcodeParser {
         exists(size);
         everyExists(topics);
 
-        const offsetNumber = offset.knownNumber;
-        const sizeNumber = toSafeNumber(size.knownNumber ?? -1n, 32n);
-        const data = offsetNumber === undefined || sizeNumber === undefined
-            ? undefined
-            : memoryText(memory, offsetNumber, BigInt(sizeNumber));
+        const sizeNumber = toSafeNumber(size.knownNumber ?? -1n, 4096n);
+        const read = sizeNumber === undefined ? undefined : memory.read(offset, sizeNumber);
         const topicsText = topics.length === 0 ? "none" : topics.join(", ");
+        const data = read?.kind === "known"
+            ? `0x${read.hex}`
+            : read?.kind === "symbolic" ? read.value.toString() : undefined;
 
-        if (data === undefined) {
-            codeBuilder.push(new CustomInstruction(`// [LOG${this.topicsAmount}] Mem: Unknown | Topics: ${topicsText}`));
-            return false;
-        }
-
-        codeBuilder.push(new CustomInstruction(`// [LOG${this.topicsAmount}] Mem: ${data} | Topics: ${topicsText}`));
+        codeBuilder.push(new CustomInstruction(data === undefined
+            ? `// [LOG${this.topicsAmount}] Mem: Unknown | Topics: ${topicsText}`
+            : `// [LOG${this.topicsAmount}] Mem: ${data} | Topics: ${topicsText}`));
 
         return false;
     }

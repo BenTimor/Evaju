@@ -1,7 +1,8 @@
 import type { IOpcodeParser, OpcodeParserParentContext } from "./base";
 import { exists } from "../type-utils";
-import { readHexBytes, toSafeNumber } from "../utils";
-import { knownOrSymbolic } from "./helpers";
+import { sliceHexBytes, toSafeNumber } from "../utils";
+import { EVMValue, EVMValueTypes } from "../evm-value";
+import { WORD_BYTES } from "../constants";
 
 export class CALLDATACOPYParser implements IOpcodeParser {
     parse({ stack, memory, config }: OpcodeParserParentContext): boolean {
@@ -15,11 +16,22 @@ export class CALLDATACOPYParser implements IOpcodeParser {
 
         const offsetNumber = offset.knownNumber;
         const sizeNumber = toSafeNumber(size.knownNumber ?? -1n);
-        const value = config.calldata !== undefined && offsetNumber !== undefined && sizeNumber !== undefined
-            ? readHexBytes(config.calldata, toSafeNumber(offsetNumber) ?? Number.MAX_SAFE_INTEGER, sizeNumber)
-            : undefined;
 
-        memory[`${destination}`] = knownOrSymbolic(value, `[Calldata[${offset}:${size}]]`);
+        if (config.calldata !== undefined && offsetNumber !== undefined && sizeNumber !== undefined) {
+            memory.storeHex(
+                destination,
+                sizeNumber,
+                sliceHexBytes(config.calldata, toSafeNumber(offsetNumber) ?? Number.MAX_SAFE_INTEGER, sizeNumber),
+            );
+
+            return false;
+        }
+
+        memory.store(
+            destination,
+            sizeNumber ?? WORD_BYTES,
+            new EVMValue(`[Calldata[${offset}:${size}]]`, EVMValueTypes.CUSTOM),
+        );
 
         return false;
     }

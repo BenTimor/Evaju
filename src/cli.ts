@@ -20,9 +20,10 @@ Options:
       --address <value>    ADDRESS of the contract (0x prefixed hex)
       --value <value>      CALLVALUE in wei
       --gas <value>        Remaining gas when execution starts
-      --max-depth <n>      Maximum nested jump depth (default: 50)
+      --max-depth <n>      Maximum nested jump depth (default: 100)
       --opcodes <file>     Use a custom opcodes.csv
       --no-cache           Disable jump-target memoization
+      --no-functions       Inline shared code instead of extracting functions
       --json               Print the report as JSON
   -h, --help               Show this help
   -v, --version            Show the version
@@ -45,6 +46,7 @@ export type CliOptions = {
     maxDepth?: number,
     opcodeCsvPath?: string,
     cache: boolean,
+    extractFunctions: boolean,
     context: ExecutionContext,
     help: boolean,
     version: boolean,
@@ -56,6 +58,7 @@ export function parseArgs(argv: string[]): CliOptions {
         stdout: false,
         json: false,
         cache: true,
+        extractFunctions: true,
         context: {},
         help: false,
         version: false,
@@ -112,6 +115,9 @@ export function parseArgs(argv: string[]): CliOptions {
                 break;
             case "--no-cache":
                 options.cache = false;
+                break;
+            case "--no-functions":
+                options.extractFunctions = false;
                 break;
             case "--max-depth":
                 options.maxDepth = parseInteger(flag, takeValue());
@@ -236,6 +242,7 @@ async function main(argv = process.argv.slice(2)): Promise<number> {
     const report = decompileWithReport(source, {
         context: options.context,
         cache: options.cache,
+        extractFunctions: options.extractFunctions,
         ...(options.maxDepth === undefined ? {} : { maxDepth: options.maxDepth }),
         ...(options.opcodeCsvPath === undefined ? {} : { opcodeCsvPath: options.opcodeCsvPath }),
     });
@@ -244,6 +251,12 @@ async function main(argv = process.argv.slice(2)): Promise<number> {
         console.log(JSON.stringify({
             code: report.code,
             warnings: report.warnings,
+            functions: report.functions.map(fn => ({
+                label: fn.label,
+                offset: fn.offset,
+                returns: fn.returns,
+                stackDelta: fn.stackDelta,
+            })),
             bytecode: report.bytecode,
             instructionCount: report.instructionCount,
         }, null, 2));

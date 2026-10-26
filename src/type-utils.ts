@@ -1,6 +1,6 @@
 export function exists<T>(obj: T | undefined | null): asserts obj is T {
     if (obj === undefined || obj === null) {
-        throw new Error("Obj is undefined");
+        throw new Error("Expected a value, received undefined (stack underflow or truncated listing)");
     }
 }
 

@@ -15,8 +15,28 @@ export class CustomInstruction extends AbstractInstruction {
         super();
     }
 
+    /** The raw text, used for marker detection without rendering. */
+    get text(): string {
+        return this.customCode;
+    }
+
     public stringifyInstruction(): string {
         return this.customCode;
+    }
+}
+
+/** A call to a function that was extracted from a shared jump target. */
+export class FunctionCallInstruction extends AbstractInstruction {
+    constructor(private label: string) {
+        super();
+    }
+
+    get targetLabel(): string {
+        return this.label;
+    }
+
+    public stringifyInstruction(): string {
+        return `${this.label}();`;
     }
 }
 

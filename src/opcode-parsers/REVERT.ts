@@ -1,7 +1,6 @@
 import { CustomInstruction } from "../code-builder";
 import { exists } from "../type-utils";
 import { toSafeNumber } from "../utils";
-import { memoryText } from "./helpers";
 import type { IOpcodeParser, OpcodeParserParentContext } from "./base";
 
 export class REVERTParser implements IOpcodeParser {
@@ -12,18 +11,15 @@ export class REVERTParser implements IOpcodeParser {
         exists(offset);
         exists(size);
 
-        const offsetNumber = offset.knownNumber;
-        const sizeNumber = toSafeNumber(size.knownNumber ?? -1n);
-        const data = offsetNumber === undefined || sizeNumber === undefined
-            ? undefined
-            : memoryText(memory, offsetNumber, BigInt(sizeNumber));
+        const sizeNumber = toSafeNumber(size.knownNumber ?? -1n, 4096n);
+        const read = sizeNumber === undefined ? undefined : memory.read(offset, sizeNumber);
+        const data = read?.kind === "known"
+            ? `0x${read.hex}`
+            : read?.kind === "symbolic" ? read.value.toString() : undefined;
 
-        if (data === undefined) {
-            codeBuilder.push(new CustomInstruction("// [REVERT] Revert: Unknown"));
-            return true;
-        }
-
-        codeBuilder.push(new CustomInstruction(`// [REVERT] Revert: ${data}`));
+        codeBuilder.push(new CustomInstruction(data === undefined
+            ? "// [REVERT] Revert: Unknown"
+            : `// [REVERT] Revert: ${data}`));
 
         return true;
     }

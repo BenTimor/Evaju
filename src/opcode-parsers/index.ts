@@ -31,6 +31,7 @@ import { MLOADParser } from "./MLOAD"
 import { MSIZEParser } from "./MSIZE"
 import { MSTOREParser } from "./MSTORE"
 import { MSTORE8Parser } from "./MSTORE8"
+import { MCopyParser } from "./MCOPY"
 import { MULMODParser } from "./MULMOD"
 import { NOTParser } from "./NOT"
 import { NUMBERParser } from "./NUMBER"
@@ -148,7 +149,7 @@ const opcodeParsers: Record<string, IOpcodeParser> = {
     MSIZE: new MSIZEParser(),
     TLOAD: new UnarySymbolicParser("TLOAD"),
     TSTORE: new StackOpsParser("TSTORE", 2),
-    MCOPY: new StackOpsParser("MCOPY", 3),
+    MCOPY: new MCopyParser(),
     PC: new PCParser(),
     GAS: new GASParser(),
     // Control flow

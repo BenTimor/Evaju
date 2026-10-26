@@ -17,4 +17,4 @@ export const SIGN_BIT_256 = 1n << 255n;
 export const ADDRESS_MASK = (1n << 160n) - 1n;
 
 /** Default maximum recursive depth used while following jumps. */
-export const DEFAULT_MAX_DEPTH = 50;
+export const DEFAULT_MAX_DEPTH = 100;

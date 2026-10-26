@@ -8,11 +8,8 @@ export class MLOADParser implements IOpcodeParser {
 
         exists(offset);
 
-        const stored = memory[`${offset}`];
-
-        stack.push(stored
-            ? stored.clone()
-            : new EVMValue(`[MEMORY[${offset}]]`, EVMValueTypes.CUSTOM));
+        stack.push(memory.readWord(offset)
+            ?? new EVMValue(`[MEMORY[${offset}]]`, EVMValueTypes.CUSTOM));
 
         return false;
     }

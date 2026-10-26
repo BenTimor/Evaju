@@ -119,24 +119,30 @@ export function stripHexPrefix(hex: string): string {
 }
 
 /**
- * Reads `size` bytes of a hex encoded byte array starting at `offset`.
+ * Extracts `size` bytes of a hex encoded byte array starting at `offset`.
  * Bytes past the end read as zero, which is what `CALLDATACOPY`/`CODECOPY` do.
  */
-export function readHexBytes(hex: string, offset: number, size = WORD_BYTES): bigint {
+export function sliceHexBytes(hex: string, offset: number, size = WORD_BYTES): string {
     if (size <= 0) {
-        return 0n;
+        return "";
     }
 
     const data = stripHexPrefix(hex);
     const start = offset * 2;
 
     if (!Number.isSafeInteger(start) || start < 0 || start >= data.length) {
-        return 0n;
+        return "0".repeat(size * 2);
     }
 
     // Hard cap so a bogus (or symbolic) size can never allocate unbounded memory.
     const length = Math.min(size * 2, 2 * 4096);
-    const slice = data.slice(start, start + length).padEnd(length, "0");
+
+    return data.slice(start, start + length).padEnd(length, "0");
+}
+
+/** Reads `size` bytes of a hex encoded byte array as a number. */
+export function readHexBytes(hex: string, offset: number, size = WORD_BYTES): bigint {
+    const slice = sliceHexBytes(hex, offset, size);
 
     return slice.length === 0 ? 0n : BigInt(`0x${slice}`);
 }

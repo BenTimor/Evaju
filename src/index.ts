@@ -1,8 +1,10 @@
 export { decompile, decompileWithReport, parseOpcode } from "./decompiler";
-export type { DecompileOptions, DecompileReport } from "./decompiler";
+export type { DecompileOptions, DecompileReport, DecompiledFunction } from "./decompiler";
 export { EVMOperatorValue, EVMValue, EVMValueTypes, ComputedNumber, validOperators } from "./evm-value";
 export type { ConvertableValueTypes, ValidOperator } from "./evm-value";
-export { AbstractInstruction, CustomInstruction, IfStatementInstruction } from "./code-builder";
+export { AbstractInstruction, CustomInstruction, FunctionCallInstruction, IfStatementInstruction } from "./code-builder";
+export { EVMMemory } from "./memory";
+export type { MemoryRead } from "./memory";
 export { OpcodeCSV, defaultOpcodeCsvPath } from "./opcodes";
 export type { OpcodeCSVLine } from "./opcodes";
 export { getOpcodeParser, isKnownInstruction, opcodeNames } from "./opcode-parsers";
@@ -17,6 +19,7 @@ export {
     normalizeUint256,
     readHexBytes,
     sliceBytes,
+    sliceHexBytes,
     stripHexPrefix,
     toHex,
     toSafeNumber,

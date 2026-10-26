@@ -259,6 +259,13 @@ describe("unknown instructions", () => {
         expect(report.warnings.join("\n")).toContain("ff");
     });
 
+    it("reports a stack underflow instead of crashing", () => {
+        const report = decompileWithReport("JUMP");
+
+        expect(report.code).toContain("// Error: JUMP at offset 0");
+        expect(report.warnings.join("\n")).toContain("stack underflow");
+    });
+
     it("warns once per unknown instruction", () => {
         const report = decompileWithReport("'ff'(Unknown Opcode)\n'ff'(Unknown Opcode)\nSTOP");
 
@@ -280,14 +287,14 @@ describe("memory, storage and logs", () => {
         expect(code).toContain(zeroWord("2a"));
     });
 
-    it("keeps unknown memory reads symbolic", () => {
+    it("treats memory that was never written as zero", () => {
         const code = decompile(assemble(`
             PUSH1 0x20
             PUSH1 0x80
             RETURN
         `));
 
-        expect(code).toBe("// [RETURN] Return: Unknown");
+        expect(code).toBe(`// [RETURN] Return: ${zeroWord("")}`);
     });
 
     it("reads storage written by a previous SSTORE", () => {

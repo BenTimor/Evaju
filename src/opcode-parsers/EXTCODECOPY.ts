@@ -1,7 +1,8 @@
 import type { IOpcodeParser, OpcodeParserParentContext } from "./base";
 import { exists } from "../type-utils";
-import { readHexBytes, toHex, toSafeNumber } from "../utils";
-import { knownOrSymbolic } from "./helpers";
+import { sliceHexBytes, toHex, toSafeNumber } from "../utils";
+import { EVMValue, EVMValueTypes } from "../evm-value";
+import { WORD_BYTES } from "../constants";
 
 export class EXTCODECOPYParser implements IOpcodeParser {
     parse({ memory, stack, config }: OpcodeParserParentContext): boolean {
@@ -19,11 +20,22 @@ export class EXTCODECOPYParser implements IOpcodeParser {
         const code = addressNumber === undefined ? undefined : config.codes?.[toHex(addressNumber)];
         const offsetNumber = offset.knownNumber;
         const sizeNumber = toSafeNumber(size.knownNumber ?? -1n);
-        const value = code !== undefined && offsetNumber !== undefined && sizeNumber !== undefined
-            ? readHexBytes(code, toSafeNumber(offsetNumber) ?? Number.MAX_SAFE_INTEGER, sizeNumber)
-            : undefined;
 
-        memory[`${destination}`] = knownOrSymbolic(value, `[EXTCODECOPY(${address}, ${offset}, ${size})]`);
+        if (code !== undefined && offsetNumber !== undefined && sizeNumber !== undefined) {
+            memory.storeHex(
+                destination,
+                sizeNumber,
+                sliceHexBytes(code, toSafeNumber(offsetNumber) ?? Number.MAX_SAFE_INTEGER, sizeNumber),
+            );
+
+            return false;
+        }
+
+        memory.store(
+            destination,
+            sizeNumber ?? WORD_BYTES,
+            new EVMValue(`[EXTCODECOPY(${address}, ${offset}, ${size})]`, EVMValueTypes.CUSTOM),
+        );
 
         return false;
     }

@@ -9,7 +9,7 @@ export class MSTOREParser implements IOpcodeParser {
         exists(key);
         exists(value);
 
-        memory[`${key}`] = value;
+        memory.storeWord(key, value);
 
         return false;
     }

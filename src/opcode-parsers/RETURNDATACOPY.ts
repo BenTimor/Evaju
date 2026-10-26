@@ -1,6 +1,8 @@
 import { EVMValue, EVMValueTypes } from "../evm-value";
 import type { IOpcodeParser, OpcodeParserParentContext } from "./base";
 import { exists } from "../type-utils";
+import { toSafeNumber } from "../utils";
+import { WORD_BYTES } from "../constants";
 
 export class RETURNDATACOPYParser implements IOpcodeParser {
     parse({ stack, memory }: OpcodeParserParentContext): boolean {
@@ -13,7 +15,11 @@ export class RETURNDATACOPYParser implements IOpcodeParser {
         exists(size);
 
         // The callee is not executed, so the copied bytes stay symbolic.
-        memory[`${destination}`] = new EVMValue(`[RETURNDATACOPY(${offset}, ${size})]`, EVMValueTypes.CUSTOM);
+        memory.store(
+            destination,
+            toSafeNumber(size.knownNumber ?? -1n) ?? WORD_BYTES,
+            new EVMValue(`[RETURNDATACOPY(${offset}, ${size})]`, EVMValueTypes.CUSTOM),
+        );
 
         return false;
     }

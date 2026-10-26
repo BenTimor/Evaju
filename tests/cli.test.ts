@@ -57,6 +57,8 @@ describe("parseArgs", () => {
         expect(parseArgs(["--stdout", "--json", "--no-cache"]).stdout).toBe(true);
         expect(parseArgs(["--json"]).json).toBe(true);
         expect(parseArgs(["--no-cache"]).cache).toBe(false);
+        expect(parseArgs(["--no-functions"]).extractFunctions).toBe(false);
+        expect(parseArgs([]).extractFunctions).toBe(true);
         expect(parseArgs(["--help"]).help).toBe(true);
         expect(parseArgs(["-h"]).help).toBe(true);
         expect(parseArgs(["-v"]).version).toBe(true);
