@@ -243,6 +243,106 @@ describe("function extraction", () => {
         expect(code).toContain("// Stop successfully");
     });
 
+    it("continues at the label the call site pushed, not after the JUMP", () => {
+        const code = decompile(assemble(`
+            PUSH2 @ret0
+            PUSH1 0x00
+            PUSH2 @validate
+            JUMP
+            ret0:
+            JUMPDEST
+            PUSH2 @ret1
+            PUSH1 0x01
+            PUSH2 @helper
+            JUMP
+            ret1:
+            JUMPDEST
+            PUSH1 0x2a
+            PUSH1 0x00
+            SSTORE
+            PUSH2 @ret2
+            PUSH1 0x01
+            PUSH2 @helper
+            JUMP
+            ret2:
+            JUMPDEST
+            STOP
+            helper:
+            JUMPDEST
+            POP
+            PUSH2 @epilogue
+            PUSH1 0x05
+            PUSH2 @validate
+            JUMP
+            STOP
+            validate:
+            JUMPDEST
+            POP
+            PUSH1 0x2b
+            PUSH1 0x00
+            SSTORE
+            JUMP
+            epilogue:
+            JUMPDEST
+            JUMP
+        `));
+
+        // `helper` tail calls `validate` and returns through the shared
+        // `epilogue`, so its continuation is the pushed label and *not* the
+        // instruction right after the JUMP (which is a dead `STOP`). The caller
+        // of `helper` must still be analysed after the call returned.
+        expect(code).toContain("// STORAGE[0x00] = 0x2b");
+        expect(code).toContain("// STORAGE[0x00] = 0x2a");
+        expect(code).not.toContain("invalid destination");
+    });
+
+    it("returns from the label a call site pushed, not through the fallthrough", () => {
+        const report = decompileWithReport(assemble(`
+            CALLDATASIZE
+            ISZERO
+            PUSH2 @branchA
+            JUMPI
+            PUSH2 @ret1
+            PUSH1 0x02
+            PUSH2 @helper
+            JUMP
+            STOP
+            branchA:
+            JUMPDEST
+            PUSH2 @ret2
+            PUSH1 0x01
+            PUSH2 @helper
+            JUMP
+            STOP
+            ret1:
+            JUMPDEST
+            PUSH1 0x2a
+            PUSH1 0x00
+            SSTORE
+            STOP
+            ret2:
+            JUMPDEST
+            STOP
+            helper:
+            JUMPDEST
+            POP
+            PUSH1 0x2b
+            PUSH1 0x05
+            SSTORE
+            JUMP
+        `));
+
+        const [fn] = report.functions;
+
+        // `helper` returns to the label pushed by its call site, which here sits
+        // after a dead `STOP`, so it has to be read from the push and not from the
+        // instruction after the JUMP.
+        expect(fn?.returns).toBe(true);
+        expect(fn?.body.map(instruction => instruction.toString())).toContain("// return");
+        expect(report.code).toContain("// STORAGE[0x00] = 0x2a");
+        expect(report.code).not.toContain("invalid destination");
+    });
+
     it("does not extract loops", () => {
         const report = decompileWithReport(assemble(`
             loop:

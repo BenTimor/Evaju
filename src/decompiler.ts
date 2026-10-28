@@ -11,7 +11,10 @@ import {
     getInstructionFromLine,
     lineBytes,
     normalizeDisassembly,
+    normalizeUint256,
     shiftMultilineText,
+    toSafeNumber,
+    unknownBaseStringToNumber,
     type LinesByOffset,
 } from "./utils";
 
@@ -104,6 +107,21 @@ type WalkState = {
 const LOOP_MARKER = "// Loop back to offset";
 const DEPTH_MARKER = "// Depth limit reached";
 
+/** Instructions that end a basic block, so a pushed value cannot flow past them. */
+const BLOCK_ENDERS = new Set([
+    "JUMP",
+    "JUMPI",
+    "JUMPDEST",
+    "STOP",
+    "RETURN",
+    "REVERT",
+    "INVALID",
+    "SELFDESTRUCT",
+]);
+
+/** How many instructions to look back for the return label of a call site. */
+const RETURN_LABEL_SCAN = 16;
+
 function createState(source: string, options: DecompileOptions, extraction: boolean): WalkState {
     const lines = normalizeDisassembly(source);
     // Re-join so parsers (CODECOPY, CODESIZE) always see a canonical listing.
@@ -166,21 +184,116 @@ function functionLabel(offset: number, selector?: bigint): string {
 }
 
 /**
+ * Offset a call site continues at once its callee returned.
+ *
+ * Solidity pushes that label before it arranges the arguments and jumps to the
+ * callee:
+ *
+ *     PUSH2 0x1091   ; where to continue after the call
+ *     DUP2           ; argument
+ *     PUSH2 0x1098   ; callee
+ *     JUMP
+ *
+ * The label is *not* always the instruction right after the JUMP: the compiler
+ * reuses shared epilogues for tail calls, and then the continuation lives
+ * somewhere else entirely. It therefore has to be read out of the listing.
+ */
+function findReturnLabel(state: WalkState, site: number, callee: number): number | undefined {
+    const siteLine = state.linesByOffset[site];
+
+    // Only unconditional jumps follow the push-return-label convention; a JUMPI
+    // branches to its target and falls through to the next instruction instead.
+    if (siteLine === undefined || getInstructionFromLine(siteLine.line) !== "JUMP") {
+        return undefined;
+    }
+
+    const firstLineNumber = siteLine.lineNumber - RETURN_LABEL_SCAN;
+
+    for (let lineNumber = siteLine.lineNumber - 1; lineNumber >= 0 && lineNumber >= firstLineNumber; lineNumber--) {
+        const line = state.lines[lineNumber];
+
+        if (line === undefined) {
+            break;
+        }
+
+        const instruction = getInstructionFromLine(line);
+
+        // Crossing a block boundary means the label is not on this path.
+        if (BLOCK_ENDERS.has(instruction)) {
+            break;
+        }
+
+        if (!instruction.startsWith("PUSH")) {
+            continue;
+        }
+
+        const [argument] = getInstructionArgs(line);
+
+        if (argument === undefined) {
+            continue;
+        }
+
+        let pushedValue: number | undefined;
+
+        try {
+            pushedValue = toSafeNumber(normalizeUint256(unknownBaseStringToNumber(argument)));
+        }
+        catch {
+            continue;
+        }
+
+        if (pushedValue === undefined || pushedValue === 0 || pushedValue === callee) {
+            continue;
+        }
+
+        const labelLine = state.linesByOffset[pushedValue];
+
+        if (labelLine !== undefined && getInstructionFromLine(labelLine.line) === "JUMPDEST") {
+            return pushedValue;
+        }
+    }
+
+    return undefined;
+}
+
+/**
  * Parses the body of a function-like jump target once, so every call site can
  * reference it instead of inlining a copy.
  *
- * The body is analysed with the stack of the first call site. A jump to the
- * instruction right after one of the call sites is treated as "return to
- * caller", which is the convention produced by Solidity-style compilers.
+ * The body is analysed with the stack of the first call site. A jump to a label
+ * one of the call sites pushed is treated as "return to caller", which is the
+ * convention produced by Solidity-style compilers.
  */
 function parseFunctionBody(state: WalkState, jump: JumpSite, depth: number): DecompiledFunction {
     const entryStack = [...jump.stack];
     const sites = state.extractSites?.get(jump.target) ?? new Set<number>();
     const selector = state.extractSelectors?.get(jump.target);
+    const returnTargets = new Set<number>();
+
+    for (const site of sites) {
+        // The label right after the jump is the common case, the pushed one the
+        // accurate one; accepting both keeps hand written listings working.
+        returnTargets.add(site + 1);
+
+        const label = findReturnLabel(state, site, jump.target);
+
+        if (label !== undefined) {
+            returnTargets.add(label);
+        }
+    }
+
+    // The body is walked with this call site's stack, so its label has to be a
+    // return target even when the site was not seen during the discovery pass.
+    const analysisLabel = findReturnLabel(state, jump.site, jump.target);
+
+    if (analysisLabel !== undefined) {
+        returnTargets.add(analysisLabel);
+    }
+
     const parse: FunctionParse = {
         offset: jump.target,
         entrySize: entryStack.length,
-        returnTargets: new Set([...sites].map(site => site + 1)),
+        returnTargets,
     };
 
     state.functionsInProgress!.add(jump.target);
@@ -210,12 +323,16 @@ function parseFunctionBody(state: WalkState, jump: JumpSite, depth: number): Dec
 }
 
 /**
- * Approximates the caller's stack after a call returned: the return address is
- * dropped and the net effect of the callee is applied. Argument values are kept
- * when possible, otherwise the missing slots become symbolic results.
+ * Approximates the caller's stack after a call returned: the return label and the
+ * arguments are dropped and the net effect of the callee is applied. Argument
+ * values are kept when possible, otherwise the missing slots become symbolic
+ * results.
  */
-function adaptStack(callerStack: EVMValue[], fn: DecompiledFunction): EVMValue[] {
-    const stack = callerStack.slice(0, Math.max(0, callerStack.length - 1));
+function adaptStack(callerStack: EVMValue[], fn: DecompiledFunction, returnLabel: number | undefined): EVMValue[] {
+    // Neither the pushed label nor the arguments survive the call, so both are
+    // dropped before the net effect of the callee is applied.
+    const caller = dropReturnLabel(callerStack, returnLabel);
+    const stack = caller.slice(0, Math.max(0, caller.length - 1));
     const targetSize = Math.max(0, callerStack.length + fn.stackDelta);
 
     while (stack.length > targetSize) {
@@ -227,6 +344,23 @@ function adaptStack(callerStack: EVMValue[], fn: DecompiledFunction): EVMValue[]
     }
 
     return stack;
+}
+
+/** Removes the return label a call site pushed, closest to the top of the stack. */
+function dropReturnLabel(stack: EVMValue[], returnLabel: number | undefined): EVMValue[] {
+    if (returnLabel === undefined) {
+        return [...stack];
+    }
+
+    const label = BigInt(returnLabel);
+
+    for (let index = stack.length - 1; index >= 0; index--) {
+        if (stack[index]?.knownNumber === label) {
+            return [...stack.slice(0, index), ...stack.slice(index + 1)];
+        }
+    }
+
+    return [...stack];
 }
 
 /** A body that only returns is a trampoline: not worth a named function. */
@@ -259,9 +393,10 @@ function emitFunctionCall(state: WalkState, jump: JumpSite, visitedOffset: Set<n
         return instructions;
     }
 
-    // A returning function continues at the instruction right after the JUMP,
-    // which is where the compiler placed the return label.
-    const continuationOffset = jump.site + jump.jumpBytes;
+    // A returning function continues at the label its call site pushed. That is
+    // only coincidentally the instruction right after the JUMP.
+    const returnLabel = findReturnLabel(state, jump.site, jump.target);
+    const continuationOffset = returnLabel ?? jump.site + jump.jumpBytes;
 
     if (state.linesByOffset[continuationOffset] === undefined) {
         return instructions;
@@ -271,7 +406,7 @@ function emitFunctionCall(state: WalkState, jump: JumpSite, visitedOffset: Set<n
     const analysis = state.functionAnalysis!.get(jump.target);
     const continuationStack = analysis !== undefined && analysis.analysisSite === jump.site && analysis.returnStack !== undefined
         ? [...analysis.returnStack]
-        : adaptStack(jump.stack, fn);
+        : adaptStack(jump.stack, fn, returnLabel);
 
     instructions.push(...walk(
         state,
